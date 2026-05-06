@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-Content \"C:\\\\Users\\\\mav73\\\\Desktop\\\\word800v2\\\\교육부지정 초등영단어 800원본.csv\" -Encoding UTF8)",
+      "Bash(Select-Object -First 50)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\mav73\\\\Desktop\\\\word800v2\\\\leitner-box\\\\node_modules\\\\.bin\" | Select-Object Name | Where-Object { $_.Name -match \"tailwind\" })",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\mav73\\\\Desktop\\\\word800v2\\\\leitner-box\\\\node_modules\\\\.bin\" | ForEach-Object { $_.Name } | Sort-Object)",
+      "PowerShell(New-Item *)",
+      "PowerShell(Start-Sleep -Seconds 3; Invoke-WebRequest -Uri \"http://localhost:5173\" -UseBasicParsing -TimeoutSec 5 | Select-Object -ExpandProperty StatusCode)",
+      "Bash(npm install *)",
+      "Bash(node -e \"const p = require\\('./node_modules/vite-plugin-pwa/package.json'\\); console.log\\(p.version\\)\")",
+      "Bash(node scripts/create-icons.mjs)",
+      "Bash(npm run *)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'feat: 암기박스 영단어 앱 완성 \\(Steps 1-5\\) *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git -C \"C:\\\\Users\\\\mav73\\\\Desktop\\\\word800v2\\\\leitner-box\" log --oneline)",
+      "Bash(Move-Item *)",
+      "Bash(git -c user.email=\"mav7338@gmail.com\" -c user.name=\"mav73\" commit -m \"feat: leitner-box 초등 영단어 800 암기앱 초기 커밋\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\mav73\\\\Desktop\\\\word800v2\\\\leitner-box\" -Recurse -File)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "Bash(git -c user.email=mav7338@gmail.com -c user.name=mav73 commit -m ' *)",
+      "Bash(gh auth *)",
+      "Bash(gh repo *)",
+      "Bash(git remote *)",
+      "Bash(git push *)",
+      "Bash(npx vercel *)",
+      "Bash(Get-ChildItem -Force)",
+      "Bash(Select-Object Name)"
+    ]
+  }
+}
