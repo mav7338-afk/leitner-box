@@ -17,7 +17,10 @@ function formatTime(seconds: number): string {
 }
 
 export default function StudySession({ cards, onFinish }: Props) {
-  const { todayCards, reviewCard } = useCardStore();
+  const { todayCards, reviewCard, voiceEnabled } = useCardStore();
+  // iOS/iPadOS Safari는 사용자 제스처 없이 speechSynthesis.speak() 차단
+  // 시작 버튼 클릭 시 잠금 해제 후 학습 진행
+  const [speechReady, setSpeechReady] = useState(false);
 
   // useState 이니셜라이저로 마운트 시 한 번만 캡처
   const [initialTotal] = useState(() => cards.length);
@@ -67,6 +70,33 @@ export default function StudySession({ cards, onFinish }: Props) {
   };
 
   const progress = initialTotal > 0 ? (correct / initialTotal) * 100 : 0;
+
+  const handleStart = () => {
+    if (voiceEnabled && 'speechSynthesis' in window) {
+      // 빈 발화로 iOS Safari 오디오 컨텍스트 잠금 해제
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+    }
+    startTimeRef.current = Date.now();
+    setSpeechReady(true);
+  };
+
+  // ── 시작 전 화면 (iOS 오디오 잠금 해제 트리거) ──
+  if (!speechReady) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-6 p-6 text-center">
+        <span className="text-7xl">📚</span>
+        <h2 className="text-2xl font-bold text-gray-700">오늘 학습할 단어</h2>
+        <p className="text-5xl font-bold text-sky-500">{initialTotal}개</p>
+        <button
+          onClick={handleStart}
+          className="bg-sky-500 text-white text-xl font-bold py-5 px-12 rounded-2xl shadow-lg active:brightness-90"
+        >
+          학습 시작 {voiceEnabled ? '🔊' : '▶️'}
+        </button>
+      </div>
+    );
+  }
 
   // ── 세션 완료 결과 화면 ──
   if (result !== null) {
