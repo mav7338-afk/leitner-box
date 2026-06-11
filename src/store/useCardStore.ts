@@ -83,6 +83,12 @@ function getVoiceEnabled(): boolean {
   }
 }
 
+interface LastAction {
+  prevCard: Card;
+  prevQueue: Card[];
+  wasCorrect: boolean;
+}
+
 // ─── Zustand 스토어 타입 ─────────────────────────────────────────────────────
 
 interface CardStoreState {
@@ -93,9 +99,11 @@ interface CardStoreState {
   totalStudyDays: number;
   pendingBadge: BadgeInfo | null;
   voiceEnabled: boolean;
+  lastAction: LastAction | null;
 
   loadCards: () => Promise<void>;
   reviewCard: (id: number, isCorrect: boolean) => Promise<void>;
+  undoLastAction: () => Promise<boolean | null>;
   initializeCards: () => Promise<void>;
   resetAll: () => Promise<void>;
   checkSessionBadges: () => Promise<void>;
@@ -113,6 +121,7 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
   totalStudyDays: 0,
   pendingBadge: null,
   voiceEnabled: getVoiceEnabled(),
+  lastAction: null,
 
   loadCards: async () => {
     set({ isLoading: true });
@@ -134,6 +143,11 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
     if (currentIndex === -1) return;
 
     const card = todayCards[currentIndex];
+    
+    // 되돌리기를 위한 백업
+    const prevCard = { ...card };
+    const prevQueue = [...todayCards];
+
     const wasBox4 = card.box === 4;
     const updated = leitnerReview(card, isCorrect, currentIndex);
 
@@ -153,7 +167,32 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
       newQueue.push(updated);
     }
 
-    set({ cards: newCards, todayCards: newQueue });
+    set({ 
+      cards: newCards, 
+      todayCards: newQueue,
+      lastAction: { prevCard, prevQueue, wasCorrect: isCorrect }
+    });
+  },
+
+  undoLastAction: async () => {
+    const { lastAction, cards } = get();
+    if (!lastAction) return null;
+
+    const { prevCard, prevQueue, wasCorrect } = lastAction;
+
+    // DB 원복
+    await db.cards.put(prevCard);
+
+    // 전역 카드 상태 원복
+    const newCards = cards.map(c => (c.id === prevCard.id ? prevCard : c));
+
+    set({ 
+      cards: newCards, 
+      todayCards: prevQueue, 
+      lastAction: null 
+    });
+
+    return wasCorrect;
   },
 
   checkSessionBadges: async () => {
@@ -215,7 +254,7 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
     await db.cards.clear();
     await db.sessions.clear();
     localStorage.removeItem('seen_badges');
-    set({ cards: [], todayCards: [], streakDays: 0, totalStudyDays: 0, pendingBadge: null });
+    set({ cards: [], todayCards: [], streakDays: 0, totalStudyDays: 0, pendingBadge: null, lastAction: null });
     await get().initializeCards();
     await get().loadCards();
   },

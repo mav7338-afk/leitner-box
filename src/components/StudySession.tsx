@@ -17,7 +17,7 @@ function formatTime(seconds: number): string {
 }
 
 export default function StudySession({ cards, onFinish }: Props) {
-  const { todayCards, reviewCard, voiceEnabled } = useCardStore();
+  const { todayCards, reviewCard, voiceEnabled, lastAction, undoLastAction } = useCardStore();
   // iOS/iPadOS Safari는 사용자 제스처 없이 speechSynthesis.speak() 차단
   // 시작 버튼 클릭 시 잠금 해제 후 학습 진행
   const [speechReady, setSpeechReady] = useState(false);
@@ -66,6 +66,24 @@ export default function StudySession({ cards, onFinish }: Props) {
     }
 
     await reviewCard(current.id, isCorrect);
+    setReviewing(false);
+  };
+
+  const handleUndo = async () => {
+    if (reviewing || !lastAction) return;
+    setReviewing(true);
+    
+    const wasCorrect = await undoLastAction();
+    if (wasCorrect !== null) {
+      if (wasCorrect) {
+        correctRef.current = Math.max(0, correctRef.current - 1);
+        setCorrect(correctRef.current);
+      } else {
+        wrongRef.current = Math.max(0, wrongRef.current - 1);
+        setWrong(wrongRef.current);
+      }
+    }
+    
     setReviewing(false);
   };
 
@@ -151,10 +169,22 @@ export default function StudySession({ cards, onFinish }: Props) {
     <div className="flex flex-col gap-5 p-4 pt-6">
       {/* 진행 바 */}
       <div>
-        <div className="flex justify-between text-sm mb-2">
-          <span className="text-green-500 font-semibold">✅ {correct}개</span>
-          <span className="text-gray-400">{todayCards.length}개 남음</span>
-          <span className="text-red-400 font-semibold">❌ {wrong}개</span>
+        <div className="flex items-center text-sm mb-2">
+          <span className="text-green-500 font-semibold flex-1">✅ {correct}개</span>
+          
+          <div className="flex-1 flex justify-center">
+            {lastAction && (
+              <button 
+                onClick={handleUndo}
+                disabled={reviewing}
+                className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 py-1.5 px-3 rounded-full flex items-center gap-1 shadow-sm active:scale-95 transition-all"
+              >
+                <span className="text-sm">↩️</span> 되돌리기
+              </button>
+            )}
+          </div>
+
+          <span className="text-red-400 font-semibold flex-1 text-right">❌ {wrong}개</span>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
           <motion.div
