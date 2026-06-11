@@ -40,7 +40,7 @@ export default function StudySession({ cards, onFinish }: Props) {
 
   // 세션 큐가 비면 결과 확정
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setTimeout>;
     if (todayCards.length === 0 && result === null && initialTotal > 0) {
       // 마지막 단어 되돌리기 기회를 위해 1.5초 대기 후 결과 화면 전환
       timer = setTimeout(() => {
