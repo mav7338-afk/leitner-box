@@ -90,12 +90,26 @@ export function getBoxCards(allCards: Card[], box: 1 | 2 | 3 | 4 | 5): Card[] {
   return allCards.filter(c => c.box === box && !c.graduated);
 }
 
-/** 오늘 복습 대상 카드 필터링 (박스별 간격 기준) */
+export const DAILY_LIMIT = 50;
+
+/** 오늘 복습 대상 카드 필터링 (박스별 간격 기준 + 일일 제한 옵션 A) */
 export function getTodayCards(allCards: Card[]): Card[] {
-  return allCards.filter(card => {
+  // 1. 복습 대상 카드 필터링
+  const reviewCards = allCards.filter(card => {
     if (card.graduated) return false;
-    if (!card.lastReviewed) return true; // 한 번도 복습 안 한 카드는 항상 포함
+    if (!card.lastReviewed) return false; // 한 번도 안 본 새 카드는 일단 제외
 
     return daysSince(card.lastReviewed) >= BOX_INTERVALS[card.box];
   });
+
+  // 2. 복습할 단어가 이미 제한치를 채웠거나 넘었으면 복습 단어만 반환
+  if (reviewCards.length >= DAILY_LIMIT) {
+    return reviewCards;
+  }
+
+  // 3. 복습 단어가 제한치보다 적으면 새 단어로 채우기
+  const newCards = allCards.filter(card => !card.graduated && !card.lastReviewed);
+  const neededCards = DAILY_LIMIT - reviewCards.length;
+
+  return [...reviewCards, ...newCards.slice(0, neededCards)];
 }

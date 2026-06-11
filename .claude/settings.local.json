@@ -28,7 +28,8 @@
       "Bash(git push *)",
       "Bash(npx vercel *)",
       "Bash(Get-ChildItem -Force)",
-      "Bash(Select-Object Name)"
+      "Bash(Select-Object Name)",
+      "Bash(git config *)"
     ]
   }
 }
