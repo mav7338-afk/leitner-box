@@ -40,18 +40,24 @@ export default function StudySession({ cards, onFinish }: Props) {
 
   // 세션 큐가 비면 결과 확정
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
     if (todayCards.length === 0 && result === null && initialTotal > 0) {
-      const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-      setResult({
-        correct: correctRef.current,
-        wrong: wrongRef.current,
-        durationSeconds: elapsed,
-        cardsStudied: initialTotal,
-      });
+      // 마지막 단어 되돌리기 기회를 위해 1.5초 대기 후 결과 화면 전환
+      timer = setTimeout(() => {
+        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        setResult({
+          correct: correctRef.current,
+          wrong: wrongRef.current,
+          durationSeconds: elapsed,
+          cardsStudied: initialTotal,
+        });
+      }, 1500);
     }
-  // 의도적으로 todayCards.length와 initialTotal만 감시
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [todayCards.length, initialTotal]);
+    
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [todayCards.length, initialTotal, result]);
 
   const handleAnswer = async (isCorrect: boolean) => {
     if (reviewing || !current) return;
@@ -162,7 +168,47 @@ export default function StudySession({ cards, onFinish }: Props) {
     );
   }
 
-  if (!current) return null;
+  // ── 대기 화면 (결과 전환 중 1.5초 딜레이) ──
+  if (!current) {
+    return (
+      <div className="flex flex-col gap-5 p-4 pt-6 min-h-screen">
+        <div>
+          <div className="flex items-center text-sm mb-2">
+            <span className="text-green-500 font-semibold flex-1">✅ {correct}개</span>
+            <div className="flex-1 flex justify-center">
+              {lastAction && (
+                <button 
+                  onClick={handleUndo}
+                  disabled={reviewing}
+                  className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 py-1.5 px-3 rounded-full flex items-center gap-1 shadow-sm active:scale-95 transition-all"
+                >
+                  <span className="text-sm">↩️</span> 되돌리기
+                </button>
+              )}
+            </div>
+            <span className="text-red-400 font-semibold flex-1 text-right">❌ {wrong}개</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+            <motion.div className="bg-blue-400 h-3 rounded-full" initial={{ width: '0%' }} animate={{ width: `100%` }} />
+          </div>
+        </div>
+
+        <div className="flex-1 flex flex-col items-center justify-center -mt-20">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-gray-400 text-sm flex flex-col items-center gap-4"
+          >
+            <div className="w-10 h-10 border-4 border-gray-200 border-t-sky-500 rounded-full animate-spin" />
+            <div className="text-center">
+              <p className="font-bold text-gray-500 mb-1">결과를 정리하고 있습니다...</p>
+              <p className="text-xs text-gray-400">마지막 단어를 되돌리려면 상단 버튼을 누르세요!</p>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
 
   // ── 학습 화면 ──
   return (

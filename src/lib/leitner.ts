@@ -93,7 +93,10 @@ export function getBoxCards(allCards: Card[], box: 1 | 2 | 3 | 4 | 5): Card[] {
 export const DAILY_LIMIT = 50;
 
 /** 오늘 복습 대상 카드 필터링 (박스별 간격 기준 + 일일 제한 옵션 A) */
-export function getTodayCards(allCards: Card[]): Card[] {
+export function getTodayCards(allCards: Card[], extraQuota: number = 0): Card[] {
+  const today = todayStr();
+  const studiedToday = allCards.filter(card => card.lastReviewed === today).length;
+
   // 1. 복습 대상 카드 필터링
   const reviewCards = allCards.filter(card => {
     if (card.graduated) return false;
@@ -102,14 +105,16 @@ export function getTodayCards(allCards: Card[]): Card[] {
     return daysSince(card.lastReviewed) >= BOX_INTERVALS[card.box];
   });
 
-  // 2. 복습할 단어가 이미 제한치를 채웠거나 넘었으면 복습 단어만 반환
-  if (reviewCards.length >= DAILY_LIMIT) {
+  // 2. 남은 할당량 계산 (일일 제한 + 추가 할당량 - 오늘 공부한 카드 수 - 오늘 복습해야 할 카드 수)
+  // 복습 카드는 할당량을 초과하더라도 밀리면 안 되므로 무조건 반환합니다
+  const remainingQuota = (DAILY_LIMIT + extraQuota) - studiedToday - reviewCards.length;
+
+  if (remainingQuota <= 0) {
     return reviewCards;
   }
 
-  // 3. 복습 단어가 제한치보다 적으면 새 단어로 채우기
+  // 3. 남은 할당량만큼 새 단어로 채우기
   const newCards = allCards.filter(card => !card.graduated && !card.lastReviewed);
-  const neededCards = DAILY_LIMIT - reviewCards.length;
 
-  return [...reviewCards, ...newCards.slice(0, neededCards)];
+  return [...reviewCards, ...newCards.slice(0, remainingQuota)];
 }

@@ -70,22 +70,35 @@ export default function HomePage() {
       </motion.div>
 
       {/* ── 공부 시작 CTA 버튼 ── */}
-      <motion.button
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.26 }}
-        whileTap={dueCount > 0 ? { scale: 0.97 } : {}}
-        onClick={() => { if (dueCount > 0) navigate('/study'); }}
-        disabled={dueCount === 0}
-        className={`w-full py-5 text-2xl font-bold rounded-2xl shadow-lg transition-colors mt-1
-          ${dueCount > 0
-            ? 'bg-blue-500 text-white active:brightness-95'
-            : 'bg-gray-300 text-gray-400 cursor-not-allowed'}`}
-      >
-        {dueCount > 0
-          ? `오늘 공부 시작! → (${dueCount}개)`
-          : '오늘 공부 완료 😊'}
-      </motion.button>
+      {dueCount > 0 ? (
+        <motion.button
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.26 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={() => navigate('/study')}
+          className="w-full py-5 text-2xl font-bold rounded-2xl shadow-lg transition-colors mt-1 bg-blue-500 text-white active:brightness-95"
+        >
+          오늘 공부 시작! → ({dueCount}개)
+        </motion.button>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.26 }}
+          className="mt-1 space-y-3"
+        >
+          <div className="w-full py-5 text-2xl font-bold rounded-2xl shadow-sm bg-gray-100 text-gray-400 text-center">
+            오늘 공부 완료 😊
+          </div>
+          <button
+            onClick={() => useCardStore.getState().addExtraQuota(50)}
+            className="w-full py-4 text-xl font-bold rounded-2xl shadow-md transition-colors bg-green-500 text-white active:brightness-95 flex items-center justify-center gap-2"
+          >
+            🔥 50개 더 공부하기
+          </button>
+        </motion.div>
+      )}
     </div>
     </>
   );

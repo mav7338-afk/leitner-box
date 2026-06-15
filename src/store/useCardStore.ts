@@ -109,6 +109,9 @@ interface CardStoreState {
   checkSessionBadges: () => Promise<void>;
   dismissBadge: () => void;
   setVoiceEnabled: (enabled: boolean) => void;
+
+  extraQuota: number;
+  addExtraQuota: (amount: number) => void;
 }
 
 // ─── Zustand 스토어 ──────────────────────────────────────────────────────────
@@ -122,12 +125,31 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
   pendingBadge: null,
   voiceEnabled: getVoiceEnabled(),
   lastAction: null,
+  extraQuota: (() => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      return parseInt(localStorage.getItem(`extra_quota_${today}`) || '0', 10);
+    } catch {
+      return 0;
+    }
+  })(),
+
+  addExtraQuota: (amount: number) => {
+    const newQuota = get().extraQuota + amount;
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      localStorage.setItem(`extra_quota_${today}`, String(newQuota));
+    } catch {}
+    set({ extraQuota: newQuota });
+    get().loadCards();
+  },
 
   loadCards: async () => {
     set({ isLoading: true });
     try {
       const cards = await db.cards.toArray();
-      const todayCards = getTodayCards(cards);
+      const { extraQuota } = get();
+      const todayCards = getTodayCards(cards, extraQuota);
       const streakDays = await calcStreak();
       const allDates = await db.sessions.orderBy('date').uniqueKeys();
       const totalStudyDays = allDates.length;
