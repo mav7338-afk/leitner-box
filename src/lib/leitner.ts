@@ -76,13 +76,8 @@ export function reviewCard(card: Card, isCorrect: boolean, currentIndex: number)
   }
 
   // ----- 오답 -----
-  if (card.box === 4) {
-    // 특수 규칙: box 유지, box4EntryIndex 보존 (store가 큐 복귀 처리)
-    return { ...card, wrongCount: card.wrongCount + 1 };
-  }
-
-  // Box 1~3 오답: box 유지 (store가 세션 큐 맨 뒤로 이동)
-  return { ...card, wrongCount: card.wrongCount + 1 };
+  // 오답 시 Box 1로 강등되어 처음부터 주기를 다시 밟도록 함
+  return { ...card, box: 1, wrongCount: card.wrongCount + 1 };
 }
 
 /** 특정 박스에 속한 미졸업 카드 목록 반환 */
