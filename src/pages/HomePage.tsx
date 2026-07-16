@@ -91,12 +91,18 @@ export default function HomePage() {
           <div className="w-full py-5 text-2xl font-bold rounded-2xl shadow-sm bg-gray-100 text-gray-400 text-center">
             오늘 공부 완료 😊
           </div>
-          <button
-            onClick={() => useCardStore.getState().addExtraQuota(50)}
-            className="w-full py-4 text-xl font-bold rounded-2xl shadow-md transition-colors bg-green-500 text-white active:brightness-95 flex items-center justify-center gap-2"
-          >
-            🔥 50개 더 공부하기
-          </button>
+          {cards.some(c => !c.graduated && !c.lastReviewed) ? (
+            <button
+              onClick={() => useCardStore.getState().addExtraQuota(50)}
+              className="w-full py-4 text-xl font-bold rounded-2xl shadow-md transition-colors bg-green-500 text-white active:brightness-95 flex items-center justify-center gap-2"
+            >
+              🔥 50개 더 공부하기
+            </button>
+          ) : (
+            <div className="text-center text-sm text-gray-500 mt-2">
+              모든 새 단어를 학습했습니다!<br />다음 복습 일정을 기다려주세요.
+            </div>
+          )}
         </motion.div>
       )}
     </div>
