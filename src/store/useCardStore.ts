@@ -2,7 +2,7 @@ import Dexie, { type Table } from 'dexie';
 import { create } from 'zustand';
 import type { Card } from '../types/card';
 import { type BadgeId, type BadgeInfo, BADGES } from '../types/badge';
-import { WORDS } from '../data/words';
+import { DECKS, type DeckId } from '../data/decks';
 import { reviewCard as leitnerReview, getTodayCards } from '../lib/leitner';
 
 // ─── IndexedDB 스키마 ────────────────────────────────────────────────────────
@@ -20,8 +20,8 @@ class LeitnerDB extends Dexie {
   cards!: Table<Card, number>;
   sessions!: Table<Session, number>;
 
-  constructor() {
-    super('leitner-db');
+  constructor(dbName: string) {
+    super(dbName);
     this.version(1).stores({
       cards: 'id, box, graduated, lastReviewed',
       sessions: '++id, date',
@@ -29,7 +29,11 @@ class LeitnerDB extends Dexie {
   }
 }
 
-export const db = new LeitnerDB();
+// 초기 DB 설정
+const savedDeck = localStorage.getItem('active_deck') as DeckId;
+const initialDeckId = DECKS[savedDeck] ? savedDeck : 'elementary';
+const initialDbName = DECKS[initialDeckId].dbName;
+export let db = new LeitnerDB(initialDbName);
 
 // ─── 연속 학습일(streak) 계산 ────────────────────────────────────────────────
 
@@ -92,6 +96,10 @@ interface LastAction {
 // ─── Zustand 스토어 타입 ─────────────────────────────────────────────────────
 
 interface CardStoreState {
+  activeDeckId: DeckId;
+  setActiveDeckId: (deckId: DeckId) => Promise<void>;
+  addSession: (session: Omit<Session, 'id'>) => Promise<void>;
+
   cards: Card[];
   isLoading: boolean;
   todayCards: Card[];
@@ -117,6 +125,22 @@ interface CardStoreState {
 // ─── Zustand 스토어 ──────────────────────────────────────────────────────────
 
 export const useCardStore = create<CardStoreState>()((set, get) => ({
+  activeDeckId: initialDeckId,
+
+  setActiveDeckId: async (deckId: DeckId) => {
+    if (get().activeDeckId === deckId) return;
+    localStorage.setItem('active_deck', deckId);
+    db = new LeitnerDB(DECKS[deckId].dbName);
+    set({ activeDeckId: deckId, cards: [], todayCards: [], streakDays: 0, totalStudyDays: 0, pendingBadge: null, lastAction: null });
+    await get().initializeCards();
+    await get().loadCards();
+  },
+
+  addSession: async (session) => {
+    await db.sessions.add(session);
+    await get().checkSessionBadges();
+  },
+
   cards: [],
   isLoading: false,
   todayCards: [],
@@ -261,7 +285,10 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
     const count = await db.cards.count();
     if (count > 0) return;
 
-    const initial: Card[] = WORDS.map(w => ({
+    const { activeDeckId } = get();
+    const deckWords = DECKS[activeDeckId].words;
+
+    const initial: Card[] = deckWords.map(w => ({
       ...w,
       box: 1 as const,
       correctCount: 0,

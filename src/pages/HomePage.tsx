@@ -6,10 +6,11 @@ import StreakBadge from '../components/StreakBadge';
 import TodayProgress from '../components/TodayProgress';
 import BoxStatus from '../components/BoxStatus';
 import BadgePopup from '../components/BadgePopup';
+import { DECKS, type DeckId } from '../data/decks';
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const { todayCards, cards, streakDays, isLoading, initializeCards, loadCards, pendingBadge, dismissBadge } = useCardStore();
+  const { activeDeckId, setActiveDeckId, todayCards, cards, streakDays, isLoading, initializeCards, loadCards, pendingBadge, dismissBadge } = useCardStore();
 
   useEffect(() => {
     initializeCards().then(() => loadCards());
@@ -30,10 +31,26 @@ export default function HomePage() {
       <motion.header
         initial={{ y: -16, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="text-center pt-6 pb-2"
+        className="text-center pt-6 pb-4 flex flex-col items-center"
       >
         <h1 className="text-3xl font-bold text-gray-800">암기박스 🗂️</h1>
-        <p className="text-gray-400 text-sm mt-1">교육부 지정 초등 영단어 800</p>
+        
+        {/* ── 덱 선택 탭 ── */}
+        <div className="bg-gray-100 p-1 rounded-2xl flex gap-1 items-center shadow-inner mt-4 max-w-full overflow-x-auto scrollbar-none">
+          {(Object.values(DECKS)).map((deck) => (
+            <button
+              key={deck.id}
+              onClick={() => setActiveDeckId(deck.id as DeckId)}
+              className={`whitespace-nowrap px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                activeDeckId === deck.id
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {deck.title}
+            </button>
+          ))}
+        </div>
       </motion.header>
 
       {/* ── 연속 학습 뱃지 ── */}

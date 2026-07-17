@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StudySession from '../components/StudySession';
-import { useCardStore, db } from '../store/useCardStore';
+import { useCardStore } from '../store/useCardStore';
 import type { SessionResult } from '../types/card';
 
 export default function StudyPage() {
   const navigate = useNavigate();
-  const { todayCards, isLoading, initializeCards, loadCards, checkSessionBadges } = useCardStore();
+  const { todayCards, isLoading, initializeCards, loadCards, addSession } = useCardStore();
 
   useEffect(() => {
     initializeCards().then(() => loadCards());
@@ -14,14 +14,13 @@ export default function StudyPage() {
   }, []);
 
   const handleFinish = async (result: SessionResult) => {
-    await db.sessions.add({
+    await addSession({
       date: new Date().toISOString().split('T')[0],
       cardsStudied: result.cardsStudied,
       correct: result.correct,
       wrong: result.wrong,
       durationSeconds: result.durationSeconds,
     });
-    await checkSessionBadges();
     navigate('/');
   };
 
