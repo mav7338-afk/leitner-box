@@ -172,6 +172,22 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
     set({ isLoading: true });
     try {
       const cards = await db.cards.toArray();
+      const { activeDeckId } = get();
+      const deckWords = DECKS[activeDeckId].words;
+      
+      const wordMap = new Map(deckWords.map(w => [w.word, w.meaning]));
+      const updates = [];
+      for (const c of cards) {
+        const newMeaning = wordMap.get(c.word);
+        if (newMeaning && c.meaning !== newMeaning) {
+          c.meaning = newMeaning;
+          updates.push(c);
+        }
+      }
+      if (updates.length > 0) {
+        await db.cards.bulkPut(updates);
+      }
+      
       const { extraQuota } = get();
       const todayCards = getTodayCards(cards, extraQuota);
       const streakDays = await calcStreak();
