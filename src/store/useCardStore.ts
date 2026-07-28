@@ -3,7 +3,16 @@ import { create } from 'zustand';
 import type { Card } from '../types/card';
 import { type BadgeId, type BadgeInfo, BADGES } from '../types/badge';
 import { DECKS, type DeckId } from '../data/decks';
-import { reviewCard as leitnerReview, getTodayCards } from '../lib/leitner';
+import { 
+  reviewCard as leitnerReview, 
+  getTodayCards,
+  getReviewAheadCards,
+  getBoxStudyCards,
+  getGraduatedPracticeCards,
+  getRandomPracticeCards,
+  getUnstudiedCards,
+  type ExtraStudyMode
+} from '../lib/leitner';
 
 // ─── IndexedDB 스키마 ────────────────────────────────────────────────────────
 
@@ -103,13 +112,16 @@ interface CardStoreState {
   cards: Card[];
   isLoading: boolean;
   todayCards: Card[];
+  isExtraStudyMode: boolean;
   streakDays: number;
   totalStudyDays: number;
   pendingBadge: BadgeInfo | null;
   voiceEnabled: boolean;
   lastAction: LastAction | null;
 
-  loadCards: () => Promise<void>;
+  loadCards: (forceRefresh?: boolean) => Promise<void>;
+  startExtraStudy: (mode: ExtraStudyMode, options?: { count?: number; boxNum?: 1 | 2 | 3 | 4 | 5 }) => void;
+  resetExtraStudy: () => void;
   reviewCard: (id: number, isCorrect: boolean) => Promise<void>;
   undoLastAction: () => Promise<boolean | null>;
   initializeCards: () => Promise<void>;
@@ -131,9 +143,9 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
     if (get().activeDeckId === deckId) return;
     localStorage.setItem('active_deck', deckId);
     db = new LeitnerDB(DECKS[deckId].dbName);
-    set({ activeDeckId: deckId, cards: [], todayCards: [], streakDays: 0, totalStudyDays: 0, pendingBadge: null, lastAction: null });
+    set({ activeDeckId: deckId, cards: [], todayCards: [], isExtraStudyMode: false, streakDays: 0, totalStudyDays: 0, pendingBadge: null, lastAction: null });
     await get().initializeCards();
-    await get().loadCards();
+    await get().loadCards(true);
   },
 
   addSession: async (session) => {
@@ -144,6 +156,7 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
   cards: [],
   isLoading: false,
   todayCards: [],
+  isExtraStudyMode: false,
   streakDays: 0,
   totalStudyDays: 0,
   pendingBadge: null,
@@ -165,14 +178,45 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
       localStorage.setItem(`extra_quota_${today}`, String(newQuota));
     } catch {}
     set({ extraQuota: newQuota });
-    get().loadCards();
+    get().loadCards(true);
   },
 
-  loadCards: async () => {
+  startExtraStudy: (mode: ExtraStudyMode, options?: { count?: number; boxNum?: 1 | 2 | 3 | 4 | 5 }) => {
+    const { cards } = get();
+    const count = options?.count ?? 20;
+    let selected: Card[] = [];
+
+    switch (mode) {
+      case 'review_ahead':
+        selected = getReviewAheadCards(cards, count);
+        break;
+      case 'box':
+        selected = getBoxStudyCards(cards, options?.boxNum || 1, count);
+        break;
+      case 'graduated':
+        selected = getGraduatedPracticeCards(cards, count);
+        break;
+      case 'all_random':
+        selected = getRandomPracticeCards(cards, count);
+        break;
+      case 'new_words':
+        selected = getUnstudiedCards(cards, count);
+        break;
+    }
+
+    set({ todayCards: selected, isExtraStudyMode: true, lastAction: null });
+  },
+
+  resetExtraStudy: () => {
+    set({ isExtraStudyMode: false });
+    get().loadCards(true);
+  },
+
+  loadCards: async (forceRefresh: boolean = false) => {
     set({ isLoading: true });
     try {
       const cards = await db.cards.toArray();
-      const { activeDeckId } = get();
+      const { activeDeckId, isExtraStudyMode, todayCards: currentTodayCards } = get();
       const deckWords = DECKS[activeDeckId].words;
       
       const wordMap = new Map(deckWords.map(w => [w.word, w.meaning]));
@@ -189,11 +233,23 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
       }
       
       const { extraQuota } = get();
-      const todayCards = getTodayCards(cards, extraQuota);
+      const calculatedTodayCards = getTodayCards(cards, extraQuota);
       const streakDays = await calcStreak();
       const allDates = await db.sessions.orderBy('date').uniqueKeys();
       const totalStudyDays = allDates.length;
-      set({ cards, todayCards, streakDays, totalStudyDays, isLoading: false });
+
+      const nextTodayCards = (isExtraStudyMode && !forceRefresh && currentTodayCards.length > 0)
+        ? currentTodayCards
+        : calculatedTodayCards;
+
+      set({ 
+        cards, 
+        todayCards: nextTodayCards, 
+        isExtraStudyMode: forceRefresh ? false : isExtraStudyMode,
+        streakDays, 
+        totalStudyDays, 
+        isLoading: false 
+      });
     } catch {
       set({ isLoading: false });
     }

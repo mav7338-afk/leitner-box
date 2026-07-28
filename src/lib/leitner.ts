@@ -76,8 +76,8 @@ export function reviewCard(card: Card, isCorrect: boolean, currentIndex: number)
   }
 
   // ----- 오답 -----
-  // 오답 시 Box 1로 강등되어 처음부터 주기를 다시 밟도록 함
-  return { ...card, box: 1, wrongCount: card.wrongCount + 1 };
+  // 오답 시 box 번호 유지, wrongCount + 1
+  return { ...card, wrongCount: card.wrongCount + 1 };
 }
 
 /** 특정 박스에 속한 미졸업 카드 목록 반환 */
@@ -113,3 +113,51 @@ export function getTodayCards(allCards: Card[], extraQuota: number = 0): Card[] 
 
   return [...reviewCards, ...newCards.slice(0, remainingQuota)];
 }
+
+// ─── 자율 추가 학습 유틸 ───────────────────────────────────────────────────
+
+export type ExtraStudyMode = 'review_ahead' | 'box' | 'graduated' | 'all_random' | 'new_words';
+
+/** 복습 일정과 상관없이 미졸업 (Box 1~4) 카드 미리 복습 (Box 낮은 순 → lastReviewed 예전 순) */
+export function getReviewAheadCards(allCards: Card[], count: number = 20): Card[] {
+  const nonGraduated = allCards.filter(c => !c.graduated);
+  const sorted = [...nonGraduated].sort((a, b) => {
+    if (a.box !== b.box) return a.box - b.box;
+    const dateA = a.lastReviewed || '';
+    const dateB = b.lastReviewed || '';
+    return dateA.localeCompare(dateB);
+  });
+  return sorted.slice(0, count);
+}
+
+/** 특정 박스(1~5) 카드만 선택하여 복습 */
+export function getBoxStudyCards(allCards: Card[], box: 1 | 2 | 3 | 4 | 5, count?: number): Card[] {
+  let targetCards: Card[];
+  if (box === 5) {
+    targetCards = allCards.filter(c => c.graduated);
+  } else {
+    targetCards = allCards.filter(c => c.box === box && !c.graduated);
+  }
+  const shuffled = [...targetCards].sort(() => Math.random() - 0.5);
+  return count ? shuffled.slice(0, count) : shuffled;
+}
+
+/** 졸업(Box 5) 카드 무작위 퀴즈 복습 */
+export function getGraduatedPracticeCards(allCards: Card[], count: number = 20): Card[] {
+  const graduated = allCards.filter(c => c.graduated);
+  const shuffled = [...graduated].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
+
+/** 전체 카드(1~5) 대상 무작위 퀴즈 */
+export function getRandomPracticeCards(allCards: Card[], count: number = 20): Card[] {
+  const shuffled = [...allCards].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
+
+/** 새 단어 (lastReviewed 없는 미졸업 카드) */
+export function getUnstudiedCards(allCards: Card[], count: number = 20): Card[] {
+  const unstudied = allCards.filter(c => !c.graduated && !c.lastReviewed);
+  return unstudied.slice(0, count);
+}
+

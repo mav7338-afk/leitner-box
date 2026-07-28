@@ -3,6 +3,7 @@ import type { Card } from '../types/card';
 
 interface Props {
   cards: Card[];
+  onSelectBox?: (boxNum: 1 | 2 | 3 | 4 | 5) => void;
 }
 
 interface BoxMeta {
@@ -20,10 +21,10 @@ const BOX_META: Record<1 | 2 | 3 | 4 | 5, BoxMeta> = {
   2: { icon: '🟠', label: 'Box 2', interval: '2일마다', bg: 'bg-orange-50', border: 'border-orange-200', textColor: 'text-orange-500', numColor: 'text-orange-600' },
   3: { icon: '🟡', label: 'Box 3', interval: '4일마다', bg: 'bg-yellow-50', border: 'border-yellow-200', textColor: 'text-yellow-600', numColor: 'text-yellow-700' },
   4: { icon: '🟢', label: 'Box 4', interval: '8일마다', bg: 'bg-green-50',  border: 'border-green-200',  textColor: 'text-green-600',  numColor: 'text-green-700' },
-  5: { icon: '✅', label: '졸업',   interval: '완료',   bg: 'bg-purple-100',border: 'border-purple-300', textColor: 'text-purple-600', numColor: 'text-purple-700' },
+  5: { icon: '🎓', label: '졸업',   interval: '완료',   bg: 'bg-purple-100',border: 'border-purple-300', textColor: 'text-purple-600', numColor: 'text-purple-700' },
 };
 
-export default function BoxStatus({ cards }: Props) {
+export default function BoxStatus({ cards, onSelectBox }: Props) {
   const getCount = (box: 1 | 2 | 3 | 4 | 5) =>
     box === 5
       ? cards.filter(c => c.graduated).length
@@ -33,7 +34,12 @@ export default function BoxStatus({ cards }: Props) {
 
   return (
     <div className="bg-white rounded-3xl shadow-md p-5 w-full">
-      <p className="text-sm font-semibold text-gray-500 mb-4">박스 현황</p>
+      <div className="flex justify-between items-center mb-4">
+        <p className="text-sm font-semibold text-gray-500">박스 현황</p>
+        {onSelectBox && (
+          <span className="text-xs text-blue-500 font-medium">💡 터치하여 지정 복습</span>
+        )}
+      </div>
 
       {/* ── 2열 그리드 (Box 1~4), Box 5는 full-width ── */}
       <div className="grid grid-cols-2 gap-3">
@@ -41,6 +47,7 @@ export default function BoxStatus({ cards }: Props) {
           const meta = BOX_META[box];
           const count = getCount(box);
           const isGrad = box === 5;
+          const isClickable = Boolean(onSelectBox && count > 0);
 
           return (
             <motion.div
@@ -48,10 +55,14 @@ export default function BoxStatus({ cards }: Props) {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06 }}
+              whileHover={isClickable ? { scale: 1.02 } : {}}
+              whileTap={isClickable ? { scale: 0.97 } : {}}
+              onClick={() => isClickable && onSelectBox?.(box)}
               className={`
                 ${isGrad ? 'col-span-2' : ''}
                 ${meta.bg} border ${meta.border} rounded-2xl p-4
                 flex ${isGrad ? 'flex-row items-center justify-between px-6' : 'flex-col items-center gap-1'}
+                ${isClickable ? 'cursor-pointer hover:shadow-md transition-all' : ''}
               `}
             >
               {/* 아이콘 + 라벨 */}

@@ -9,7 +9,11 @@ export default function StudyPage() {
   const { todayCards, isLoading, initializeCards, loadCards, addSession } = useCardStore();
 
   useEffect(() => {
-    initializeCards().then(() => loadCards());
+    initializeCards().then(() => {
+      if (useCardStore.getState().cards.length === 0) {
+        loadCards();
+      }
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -21,6 +25,7 @@ export default function StudyPage() {
       wrong: result.wrong,
       durationSeconds: result.durationSeconds,
     });
+    useCardStore.getState().resetExtraStudy();
     navigate('/');
   };
 
@@ -40,7 +45,10 @@ export default function StudyPage() {
         <h2 className="text-3xl font-bold text-gray-700">오늘 공부 끝!</h2>
         <p className="text-gray-400 text-lg">내일 다시 만나요</p>
         <button
-          onClick={() => navigate('/')}
+          onClick={() => {
+            useCardStore.getState().resetExtraStudy();
+            navigate('/');
+          }}
           className="mt-4 bg-sky-500 text-white text-lg font-bold py-4 px-10 rounded-2xl shadow active:brightness-90"
         >
           홈으로 🏠
