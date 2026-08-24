@@ -56,6 +56,12 @@ async function calcStreak(): Promise<number> {
   const cursor = new Date();
   cursor.setHours(0, 0, 0, 0);
 
+  // 오늘 학습 안 했으면 어제부터 역추적 (연속 기록 끊김 오해 방지)
+  const todayStr = cursor.toISOString().split('T')[0];
+  if (!uniqueDates.includes(todayStr)) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
   for (let i = uniqueDates.length - 1; i >= 0; i--) {
     const expected = cursor.toISOString().split('T')[0];
     if (uniqueDates[i] === expected) {
@@ -176,7 +182,9 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
     try {
       const today = new Date().toISOString().split('T')[0];
       localStorage.setItem(`extra_quota_${today}`, String(newQuota));
-    } catch {}
+    } catch {
+      // localStorage 접근 불가 시 무시 (시크릿 모드 등)
+    }
     set({ extraQuota: newQuota });
     get().loadCards(true);
   },
@@ -213,9 +221,12 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
   },
 
   loadCards: async (forceRefresh: boolean = false) => {
+    const deckIdAtStart = get().activeDeckId;
     set({ isLoading: true });
     try {
       const cards = await db.cards.toArray();
+      // 비동기 작업 중 덱이 전환되었으면 stale 결과 무시
+      if (get().activeDeckId !== deckIdAtStart) return;
       const { activeDeckId, isExtraStudyMode, todayCards: currentTodayCards } = get();
       const deckWords = DECKS[activeDeckId].words;
       
@@ -237,6 +248,9 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
       const streakDays = await calcStreak();
       const allDates = await db.sessions.orderBy('date').uniqueKeys();
       const totalStudyDays = allDates.length;
+
+      // 비동기 작업 중 덱이 전환되었으면 stale 결과 무시
+      if (get().activeDeckId !== deckIdAtStart) return;
 
       const nextTodayCards = (isExtraStudyMode && !forceRefresh && currentTodayCards.length > 0)
         ? currentTodayCards
@@ -279,7 +293,7 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
     if (isCorrect || updated.graduated) {
       // 정답/졸업: 큐에서 제거
     } else if (wasBox4) {
-      const insertAt = Math.min(card.box4EntryIndex ?? 0, newQueue.length);
+      const insertAt = Math.min(card.box4EntryIndex ?? newQueue.length, newQueue.length);
       // 새 객체 참조를 만들어 React(AnimatePresence)가 key 변경을 감지하도록 함
       newQueue.splice(insertAt, 0, { ...updated });
     } else {
@@ -326,7 +340,9 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
 
     let badge: BadgeInfo | null = null;
 
-    if (graduated >= 800 && !seen.has('all_graduated'))
+    const { activeDeckId } = get();
+    const totalWords = DECKS[activeDeckId].words.length;
+    if (graduated >= totalWords && !seen.has('all_graduated'))
       badge = BADGES.all_graduated;
     else if (graduated >= 10 && !seen.has('ten_graduated'))
       badge = BADGES.ten_graduated;

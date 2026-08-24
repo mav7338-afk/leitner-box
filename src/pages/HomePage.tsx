@@ -185,7 +185,7 @@ export default function HomePage() {
               {/* 학습 수량 선택 칩 */}
               <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-2xl">
                 <span className="text-xs font-semibold text-gray-500 pl-2">학습 분량:</span>
-                {[10, 20, 50, 800].map((num) => (
+                {[10, 20, 50, cards.length].map((num) => (
                   <button
                     key={num}
                     onClick={() => setSelectedCount(num)}
@@ -195,7 +195,7 @@ export default function HomePage() {
                         : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
                     }`}
                   >
-                    {num === 800 ? '전체' : `${num}개`}
+                    {num === cards.length ? '전체' : `${num}개`}
                   </button>
                 ))}
               </div>

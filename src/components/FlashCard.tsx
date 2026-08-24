@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import type { Card } from '../types/card';
 import { useCardStore } from '../store/useCardStore';
@@ -10,18 +10,20 @@ interface Props {
 }
 
 export default function FlashCard({ card, onCorrect, onWrong }: Props) {
+  // 상태 변경과 애니메이션 사이의 깜박임을 방지하기 위해 마운트 시점의 카드를 고정
+  const [initialCard] = useState(card);
   const [isFlipped, setIsFlipped] = useState(false);
   const voiceEnabled = useCardStore(s => s.voiceEnabled);
+  const speakTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  // 새 카드가 마운트될 때 한 번만 리셋 + 자동 발음 (AnimatePresence exiting 중 중복 실행 방지)
+  // 새 카드가 마운트될 때 자동 발음 (AnimatePresence exiting 중 중복 실행 방지)
   useEffect(() => {
-    setIsFlipped(false);
     if (voiceEnabled && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       
       // iOS Safari 버그 우회: cancel() 직후 바로 speak()하면 중복 발음되거나 씹히는 현상 방지
       const timer = setTimeout(() => {
-        const utt = new SpeechSynthesisUtterance(card.word);
+        const utt = new SpeechSynthesisUtterance(initialCard.word);
         utt.lang = 'en-US';
         utt.rate = 0.9;
         window.speechSynthesis.speak(utt);
@@ -31,12 +33,21 @@ export default function FlashCard({ card, onCorrect, onWrong }: Props) {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 언마운트 시 speak 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (speakTimerRef.current) clearTimeout(speakTimerRef.current);
+      window.speechSynthesis?.cancel();
+    };
+  }, []);
+
   const speak = (e: React.MouseEvent) => {
     e.stopPropagation();
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
-      setTimeout(() => {
-        const utt = new SpeechSynthesisUtterance(card.word);
+      if (speakTimerRef.current) clearTimeout(speakTimerRef.current);
+      speakTimerRef.current = setTimeout(() => {
+        const utt = new SpeechSynthesisUtterance(initialCard.word);
         utt.lang = 'en-US';
         utt.rate = 0.9;
         window.speechSynthesis.speak(utt);
@@ -73,7 +84,7 @@ export default function FlashCard({ card, onCorrect, onWrong }: Props) {
           className="absolute inset-0 bg-white rounded-3xl shadow-lg flex flex-col items-center justify-center gap-5 px-6"
         >
           <p className="text-4xl font-bold text-gray-800 text-center leading-tight">
-            {card.word}
+            {initialCard.word}
           </p>
           <p className="text-sm text-gray-400">탭해서 뜻 보기 👆</p>
           {voiceEnabled && (
@@ -92,9 +103,9 @@ export default function FlashCard({ card, onCorrect, onWrong }: Props) {
           style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
           className="absolute inset-0 bg-sky-50 rounded-3xl shadow-lg flex flex-col items-center justify-center gap-5 px-5"
         >
-          <p className="text-gray-400 text-base">{card.word}</p>
+          <p className="text-gray-400 text-base">{initialCard.word}</p>
           <p className="text-3xl font-semibold text-sky-700 text-center leading-snug">
-            {card.meaning}
+            {initialCard.meaning}
           </p>
           <div className="flex flex-col gap-3 w-full mt-1">
             <button

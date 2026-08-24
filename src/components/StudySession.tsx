@@ -28,7 +28,7 @@ export default function StudySession({ cards, onFinish }: Props) {
   // 결과 계산용 ref (클로저 stale 방지)
   const correctRef = useRef(0);
   const wrongRef = useRef(0);
-  const startTimeRef = useRef(Date.now());
+  const startTimeRef = useRef(0);
 
   // 화면 표시용 state
   const [correct, setCorrect] = useState(0);
@@ -90,6 +90,7 @@ export default function StudySession({ cards, onFinish }: Props) {
         wrongRef.current = Math.max(0, wrongRef.current - 1);
         setWrong(wrongRef.current);
       }
+      setCardKey(k => k + 1);
     }
     
     setReviewing(false);
