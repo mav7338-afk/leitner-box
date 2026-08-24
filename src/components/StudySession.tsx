@@ -35,6 +35,7 @@ export default function StudySession({ cards, onFinish }: Props) {
   const [wrong, setWrong] = useState(0);
   const [result, setResult] = useState<SessionResult | null>(null);
   const [reviewing, setReviewing] = useState(false);
+  const [cardKey, setCardKey] = useState(0);
 
   const current = todayCards[0] as Card | undefined;
 
@@ -72,6 +73,7 @@ export default function StudySession({ cards, onFinish }: Props) {
     }
 
     await reviewCard(current.id, isCorrect);
+    setCardKey(k => k + 1);
     setReviewing(false);
   };
 
@@ -260,7 +262,7 @@ export default function StudySession({ cards, onFinish }: Props) {
       {/* 플래시카드 (카드 전환 슬라이드 애니메이션) */}
       <AnimatePresence mode="wait">
         <motion.div
-          key={current.id}
+          key={cardKey}
           initial={{ x: 80, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: -80, opacity: 0 }}

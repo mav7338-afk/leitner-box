@@ -280,9 +280,11 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
       // 정답/졸업: 큐에서 제거
     } else if (wasBox4) {
       const insertAt = Math.min(card.box4EntryIndex ?? 0, newQueue.length);
-      newQueue.splice(insertAt, 0, updated);
+      // 새 객체 참조를 만들어 React(AnimatePresence)가 key 변경을 감지하도록 함
+      newQueue.splice(insertAt, 0, { ...updated });
     } else {
-      newQueue.push(updated);
+      // 새 객체 참조를 만들어 React(AnimatePresence)가 key 변경을 감지하도록 함
+      newQueue.push({ ...updated });
     }
 
     set({ 
