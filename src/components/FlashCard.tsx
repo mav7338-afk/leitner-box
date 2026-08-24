@@ -13,26 +13,34 @@ export default function FlashCard({ card, onCorrect, onWrong }: Props) {
   const [isFlipped, setIsFlipped] = useState(false);
   const voiceEnabled = useCardStore(s => s.voiceEnabled);
 
-  // 새 카드가 오면 앞면으로 리셋 + 자동 발음
+  // 새 카드가 마운트될 때 한 번만 리셋 + 자동 발음 (AnimatePresence exiting 중 중복 실행 방지)
   useEffect(() => {
     setIsFlipped(false);
     if (voiceEnabled && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
-      const utt = new SpeechSynthesisUtterance(card.word);
-      utt.lang = 'en-US';
-      utt.rate = 0.9;
-      window.speechSynthesis.speak(utt);
+      
+      // iOS Safari 버그 우회: cancel() 직후 바로 speak()하면 중복 발음되거나 씹히는 현상 방지
+      const timer = setTimeout(() => {
+        const utt = new SpeechSynthesisUtterance(card.word);
+        utt.lang = 'en-US';
+        utt.rate = 0.9;
+        window.speechSynthesis.speak(utt);
+      }, 50);
+
+      return () => clearTimeout(timer);
     }
-  }, [card.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const speak = (e: React.MouseEvent) => {
     e.stopPropagation();
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
-      const utt = new SpeechSynthesisUtterance(card.word);
-      utt.lang = 'en-US';
-      utt.rate = 0.9;
-      window.speechSynthesis.speak(utt);
+      setTimeout(() => {
+        const utt = new SpeechSynthesisUtterance(card.word);
+        utt.lang = 'en-US';
+        utt.rate = 0.9;
+        window.speechSynthesis.speak(utt);
+      }, 50);
     }
   };
 
