@@ -85,7 +85,7 @@ export function getBoxCards(allCards: Card[], box: 1 | 2 | 3 | 4 | 5): Card[] {
   return allCards.filter(c => c.box === box && !c.graduated);
 }
 
-export const DAILY_LIMIT = 50;
+export const DAILY_LIMIT = 100;
 
 /** 오늘 복습 대상 카드 필터링 (박스별 간격 기준 + 일일 제한 옵션 A) */
 export function getTodayCards(allCards: Card[], extraQuota: number = 0): Card[] {
