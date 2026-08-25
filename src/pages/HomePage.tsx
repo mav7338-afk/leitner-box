@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useShallow } from 'zustand/react/shallow';
 import { useCardStore } from '../store/useCardStore';
 import StreakBadge from '../components/StreakBadge';
 import TodayProgress from '../components/TodayProgress';
@@ -11,6 +12,7 @@ import type { ExtraStudyMode } from '../lib/leitner';
 
 export default function HomePage() {
   const navigate = useNavigate();
+  // M2: 필요한 상태만 선택적으로 구독 (voiceEnabled, lastAction 등 무관한 상태 변경 시 리렌더 방지)
   const { 
     activeDeckId, 
     setActiveDeckId, 
@@ -23,7 +25,19 @@ export default function HomePage() {
     startExtraStudy,
     pendingBadge, 
     dismissBadge 
-  } = useCardStore();
+  } = useCardStore(useShallow(s => ({
+    activeDeckId: s.activeDeckId,
+    setActiveDeckId: s.setActiveDeckId,
+    todayCards: s.todayCards,
+    cards: s.cards,
+    streakDays: s.streakDays,
+    isLoading: s.isLoading,
+    initializeCards: s.initializeCards,
+    loadCards: s.loadCards,
+    startExtraStudy: s.startExtraStudy,
+    pendingBadge: s.pendingBadge,
+    dismissBadge: s.dismissBadge,
+  })));
 
   const [selectedCount, setSelectedCount] = useState<number>(20);
   const [showExtraMenu, setShowExtraMenu] = useState<boolean>(false);
@@ -33,15 +47,22 @@ export default function HomePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 오늘 날짜(YYYY-MM-DD)
-  const todayStr = new Date().toISOString().split('T')[0];
-  // 오늘 이미 복습한 카드 수 (lastReviewed === today)
-  const studiedToday = cards.filter(c => c.lastReviewed === todayStr).length;
-  const dueCount = todayCards.length;
+  // M2: cards 4회 별도 filter → 단일 useMemo로 한 번에 집계
+  const { studiedToday, graduatedCount, nonGraduatedCount, unstudiedCount } = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    let studied = 0, graduated = 0, nonGraduated = 0, unstudied = 0;
+    for (const c of cards) {
+      if (c.lastReviewed === today) studied++;
+      if (c.graduated) graduated++;
+      else {
+        nonGraduated++;
+        if (!c.lastReviewed) unstudied++;
+      }
+    }
+    return { studiedToday: studied, graduatedCount: graduated, nonGraduatedCount: nonGraduated, unstudiedCount: unstudied };
+  }, [cards]);
 
-  const graduatedCount = cards.filter(c => c.graduated).length;
-  const nonGraduatedCount = cards.filter(c => !c.graduated).length;
-  const unstudiedCount = cards.filter(c => !c.graduated && !c.lastReviewed).length;
+  const dueCount = todayCards.length;
 
   const handleExtraStudy = (mode: ExtraStudyMode, boxNum?: 1 | 2 | 3 | 4 | 5) => {
     startExtraStudy(mode, { count: selectedCount, boxNum });
@@ -55,7 +76,10 @@ export default function HomePage() {
 
   return (
     <>
-    {pendingBadge && <BadgePopup badge={pendingBadge} onDismiss={dismissBadge} />}
+    {/* C6: AnimatePresence로 감싸야 exit 애니메이션이 동작함 */}
+    <AnimatePresence>
+      {pendingBadge && <BadgePopup badge={pendingBadge} onDismiss={dismissBadge} />}
+    </AnimatePresence>
     <div className="flex flex-col gap-4 p-4 pb-12 max-w-lg mx-auto">
       {/* ── 앱 제목 ── */}
       <motion.header

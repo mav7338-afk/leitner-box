@@ -83,10 +83,12 @@ describe('reviewCard — 오답 처리', () => {
     expect(result.wrongCount).toBe(1);
   });
 
-  it('오답 시 lastReviewed는 변경되지 않음', () => {
+  it('오답 시 lastReviewed는 오늘 날짜로 갱신됨 (복습 스케줄 정확도 보장)', () => {
+    const today = new Date().toISOString().split('T')[0];
     const card = makeCard(1, { lastReviewed: '2026-01-01' });
     const result = reviewCard(card, false, 0);
-    expect(result.lastReviewed).toBe('2026-01-01');
+    // C1 수정: 오답이어도 "오늘 봤다"는 사실을 기록하여 다음 세션에서 간격 계산이 정확해짐
+    expect(result.lastReviewed).toBe(today);
   });
 });
 

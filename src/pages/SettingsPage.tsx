@@ -1,7 +1,8 @@
 import { useCardStore } from '../store/useCardStore';
+import { DECKS } from '../data/decks';
 
 export default function SettingsPage() {
-  const { resetAll, cards, totalStudyDays, voiceEnabled, setVoiceEnabled } = useCardStore();
+  const { resetAll, cards, totalStudyDays, voiceEnabled, setVoiceEnabled, activeDeckId } = useCardStore();
 
   const graduated = cards.filter(c => c.graduated).length;
   const total = cards.length;
@@ -71,7 +72,7 @@ export default function SettingsPage() {
           </div>
           <div className="flex justify-between">
             <span>단어 데이터</span>
-            <span className="text-gray-400">교육부 지정 초등 영단어</span>
+            <span className="text-gray-400">{DECKS[activeDeckId]?.title ?? '알 수 없음'}</span>
           </div>
           <div className="flex justify-between">
             <span>알고리즘</span>

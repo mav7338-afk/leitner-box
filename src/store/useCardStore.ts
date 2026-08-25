@@ -42,15 +42,18 @@ class LeitnerDB extends Dexie {
 const savedDeck = localStorage.getItem('active_deck') as DeckId;
 const initialDeckId = DECKS[savedDeck] ? savedDeck : 'elementary';
 const initialDbName = DECKS[initialDeckId].dbName;
-export let db = new LeitnerDB(initialDbName);
+// C3: let export 대신 내부 변수 + getter 함수로 관리 (stale reference 방지 + 연결 누수 차단)
+let _db = new LeitnerDB(initialDbName);
+export function getDb(): LeitnerDB { return _db; }
+
+// ─── 연속 학습일(streak) 계산 ────────────────────────────────────────────────
 
 // ─── 연속 학습일(streak) 계산 ────────────────────────────────────────────────
 
 async function calcStreak(): Promise<number> {
-  const sessions = await db.sessions.orderBy('date').toArray();
-  if (!sessions.length) return 0;
-
-  const uniqueDates = [...new Set(sessions.map(s => s.date))].sort();
+  // M3: toArray() 대신 uniqueKeys()로 날짜 문자열만 조회 (세션 수가 많아도 효율적)
+  const uniqueDates = (await _db.sessions.orderBy('date').uniqueKeys()) as string[];
+  if (!uniqueDates.length) return 0;
 
   let streak = 0;
   const cursor = new Date();
@@ -148,14 +151,16 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
   setActiveDeckId: async (deckId: DeckId) => {
     if (get().activeDeckId === deckId) return;
     localStorage.setItem('active_deck', deckId);
-    db = new LeitnerDB(DECKS[deckId].dbName);
+    // C3: 이전 IndexedDB 연결을 닫아 연결 누수 방지
+    _db.close();
+    _db = new LeitnerDB(DECKS[deckId].dbName);
     set({ activeDeckId: deckId, cards: [], todayCards: [], isExtraStudyMode: false, streakDays: 0, totalStudyDays: 0, pendingBadge: null, lastAction: null });
     await get().initializeCards();
     await get().loadCards(true);
   },
 
   addSession: async (session) => {
-    await db.sessions.add(session);
+    await _db.sessions.add(session);
     await get().checkSessionBadges();
   },
 
@@ -224,40 +229,53 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
     const deckIdAtStart = get().activeDeckId;
     set({ isLoading: true });
     try {
-      const cards = await db.cards.toArray();
-      // 비동기 작업 중 덱이 전환되었으면 stale 결과 무시
-      if (get().activeDeckId !== deckIdAtStart) return;
+      const cards = await _db.cards.toArray();
+      // C4: 비동기 작업 중 덱이 전환되었으면 stale 결과 무시 (isLoading 해제 필수)
+      if (get().activeDeckId !== deckIdAtStart) {
+        set({ isLoading: false });
+        return;
+      }
       const { activeDeckId, isExtraStudyMode, todayCards: currentTodayCards } = get();
-      const deckWords = DECKS[activeDeckId].words;
-      
+
+      // M4: dynamic import로 지연 로딩된 단어 목록 사용
+      const deckWords = await DECKS[activeDeckId].loadWords();
+
+      // M5: 원본 객체를 직접 mutate하지 않고 immutable하게 새 객체 생성
       const wordMap = new Map(deckWords.map(w => [w.word, w.meaning]));
-      const updates = [];
+      const updatedCards: Card[] = [];
+      const updates: Card[] = [];
       for (const c of cards) {
         const newMeaning = wordMap.get(c.word);
         if (newMeaning && c.meaning !== newMeaning) {
-          c.meaning = newMeaning;
-          updates.push(c);
+          const updated = { ...c, meaning: newMeaning };
+          updates.push(updated);
+          updatedCards.push(updated);
+        } else {
+          updatedCards.push(c);
         }
       }
       if (updates.length > 0) {
-        await db.cards.bulkPut(updates);
+        await _db.cards.bulkPut(updates);
       }
-      
+
       const { extraQuota } = get();
-      const calculatedTodayCards = getTodayCards(cards, extraQuota);
+      const calculatedTodayCards = getTodayCards(updatedCards, extraQuota);
       const streakDays = await calcStreak();
-      const allDates = await db.sessions.orderBy('date').uniqueKeys();
+      const allDates = await _db.sessions.orderBy('date').uniqueKeys();
       const totalStudyDays = allDates.length;
 
-      // 비동기 작업 중 덱이 전환되었으면 stale 결과 무시
-      if (get().activeDeckId !== deckIdAtStart) return;
+      // C4: 두 번째 비동기 완료 후에도 덱 전환 확인
+      if (get().activeDeckId !== deckIdAtStart) {
+        set({ isLoading: false });
+        return;
+      }
 
       const nextTodayCards = (isExtraStudyMode && !forceRefresh && currentTodayCards.length > 0)
         ? currentTodayCards
         : calculatedTodayCards;
 
       set({ 
-        cards, 
+        cards: updatedCards, 
         todayCards: nextTodayCards, 
         isExtraStudyMode: forceRefresh ? false : isExtraStudyMode,
         streakDays, 
@@ -270,7 +288,7 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
   },
 
   reviewCard: async (id: number, isCorrect: boolean) => {
-    const { todayCards, cards } = get();
+    const { todayCards } = get();
     const currentIndex = todayCards.findIndex(c => c.id === id);
     if (currentIndex === -1) return;
 
@@ -283,9 +301,11 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
     const wasBox4 = card.box === 4;
     const updated = leitnerReview(card, isCorrect, currentIndex);
 
-    await db.cards.put(updated);
+    await _db.cards.put(updated);
 
-    const newCards = cards.map(c => (c.id === id ? updated : c));
+    // C5: await 이후 다른 action이 state를 변경했을 수 있으므로 최신 cards를 재조회
+    const currentCards = get().cards;
+    const newCards = currentCards.map(c => (c.id === id ? updated : c));
 
     const newQueue = [...todayCards];
     newQueue.splice(currentIndex, 1);
@@ -293,7 +313,9 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
     if (isCorrect || updated.graduated) {
       // 정답/졸업: 큐에서 제거
     } else if (wasBox4) {
-      const insertAt = Math.min(card.box4EntryIndex ?? newQueue.length, newQueue.length);
+      const rawInsertAt = Math.min(card.box4EntryIndex ?? newQueue.length, newQueue.length);
+      // insertAt이 0이면 큐 맨 앞에 삽입되어 같은 카드가 무한 반복되는 버그 방지
+      const insertAt = Math.max(rawInsertAt, Math.min(1, newQueue.length));
       // 새 객체 참조를 만들어 React(AnimatePresence)가 key 변경을 감지하도록 함
       newQueue.splice(insertAt, 0, { ...updated });
     } else {
@@ -315,7 +337,7 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
     const { prevCard, prevQueue, wasCorrect } = lastAction;
 
     // DB 원복
-    await db.cards.put(prevCard);
+    await _db.cards.put(prevCard);
 
     // 전역 카드 상태 원복
     const newCards = cards.map(c => (c.id === prevCard.id ? prevCard : c));
@@ -335,13 +357,14 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
 
     const graduated = cards.filter(c => c.graduated).length;
     const box2plus = cards.filter(c => c.box >= 2 || c.graduated).length;
-    const sessionCount = await db.sessions.count();
+    const sessionCount = await _db.sessions.count();
     const streak = await calcStreak();
 
     let badge: BadgeInfo | null = null;
 
     const { activeDeckId } = get();
-    const totalWords = DECKS[activeDeckId].words.length;
+    // M4: words.length 대신 wordCount 사용 (dynamic import 없이 즉시 참조)
+    const totalWords = DECKS[activeDeckId].wordCount;
     if (graduated >= totalWords && !seen.has('all_graduated'))
       badge = BADGES.all_graduated;
     else if (graduated >= 10 && !seen.has('ten_graduated'))
@@ -372,11 +395,12 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
   },
 
   initializeCards: async () => {
-    const count = await db.cards.count();
+    const count = await _db.cards.count();
     if (count > 0) return;
 
     const { activeDeckId } = get();
-    const deckWords = DECKS[activeDeckId].words;
+    // M4: dynamic import로 단어 목록 로딩
+    const deckWords = await DECKS[activeDeckId].loadWords();
 
     const initial: Card[] = deckWords.map(w => ({
       ...w,
@@ -386,12 +410,12 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
       graduated: false,
     }));
 
-    await db.cards.bulkAdd(initial);
+    await _db.cards.bulkAdd(initial);
   },
 
   resetAll: async () => {
-    await db.cards.clear();
-    await db.sessions.clear();
+    await _db.cards.clear();
+    await _db.sessions.clear();
     localStorage.removeItem('seen_badges');
     set({ cards: [], todayCards: [], streakDays: 0, totalStudyDays: 0, pendingBadge: null, lastAction: null });
     await get().initializeCards();

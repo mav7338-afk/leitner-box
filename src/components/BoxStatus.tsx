@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import type { Card } from '../types/card';
 
@@ -24,13 +25,21 @@ const BOX_META: Record<1 | 2 | 3 | 4 | 5, BoxMeta> = {
   5: { icon: '🎓', label: '졸업',   interval: '완료',   bg: 'bg-purple-100',border: 'border-purple-300', textColor: 'text-purple-600', numColor: 'text-purple-700' },
 };
 
-export default function BoxStatus({ cards, onSelectBox }: Props) {
-  const getCount = (box: 1 | 2 | 3 | 4 | 5) =>
-    box === 5
-      ? cards.filter(c => c.graduated).length
-      : cards.filter(c => c.box === box && !c.graduated).length;
+// 모듈 스코프 상수 (렌더마다 재생성 방지)
+const BOXES = ([1, 2, 3, 4, 5] as const);
 
-  const boxes = ([1, 2, 3, 4, 5] as const);
+export default function BoxStatus({ cards, onSelectBox }: Props) {
+  // M6: getCount(box) 5회 개별 호출 → useMemo 단일 O(N) 순회로 모든 박스 카운트 집계
+  const counts = useMemo(() => {
+    const result = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<1|2|3|4|5, number>;
+    for (const c of cards) {
+      if (c.graduated) result[5]++;
+      else if (c.box >= 1 && c.box <= 4) result[c.box as 1|2|3|4]++;
+    }
+    return result;
+  }, [cards]);
+
+
 
   return (
     <div className="bg-white rounded-3xl shadow-md p-5 w-full">
@@ -43,9 +52,9 @@ export default function BoxStatus({ cards, onSelectBox }: Props) {
 
       {/* ── 2열 그리드 (Box 1~4), Box 5는 full-width ── */}
       <div className="grid grid-cols-2 gap-3">
-        {boxes.map((box, i) => {
+        {BOXES.map((box, i) => {
           const meta = BOX_META[box];
-          const count = getCount(box);
+          const count = counts[box];
           const isGrad = box === 5;
           const isClickable = Boolean(onSelectBox && count > 0);
 

@@ -77,7 +77,8 @@ export function reviewCard(card: Card, isCorrect: boolean, currentIndex: number)
 
   // ----- 오답 -----
   // 오답 시 box 번호 유지, wrongCount + 1
-  return { ...card, wrongCount: card.wrongCount + 1 };
+  // lastReviewed는 갱신: "오늘 봤다"는 사실을 기록해야 다음 세션에서 복습 간격이 정확히 계산됨
+  return { ...card, wrongCount: card.wrongCount + 1, lastReviewed: todayStr() };
 }
 
 /** 특정 박스에 속한 미졸업 카드 목록 반환 */
