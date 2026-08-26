@@ -6,7 +6,6 @@ export interface Card {
   lastReviewed?: string;
   correctCount: number;
   wrongCount: number;
-  box4EntryIndex?: number;
   graduated: boolean;
 }
 

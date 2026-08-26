@@ -30,15 +30,14 @@ function daysSince(isoDateStr: string): number {
  * 라이트너 암기박스 규칙
  *
  * 정답(isCorrect=true):
- *   Box 1~3 → box + 1 (Box 3→4 전환 시 currentIndex를 box4EntryIndex에 저장)
+ *   Box 1~3 → box + 1
  *   Box 4   → Box 5 + graduated = true
  *   Box 5   → graduated = true (이미 박스에 있다면 즉시 졸업)
  *
  * 오답(isCorrect=false):
- *   Box 1~3 → box 유지, wrongCount + 1 (store가 세션 큐 맨 뒤로 이동)
- *   Box 4   → box 유지, wrongCount + 1 (store가 큐를 box4EntryIndex 위치로 복귀)
+ *   모든 Box 공통 → Box 1로 강등, wrongCount + 1
  */
-export function reviewCard(card: Card, isCorrect: boolean, currentIndex: number): Card {
+export function reviewCard(card: Card, isCorrect: boolean): Card {
   if (isCorrect) {
     if (card.box === 5) {
       return {
@@ -61,11 +60,9 @@ export function reviewCard(card: Card, isCorrect: boolean, currentIndex: number)
     }
 
     if (card.box === 3) {
-      // Box 3 정답 → Box 4, 현재 세션 인덱스를 box4EntryIndex로 저장
       return {
         ...card,
         box: 4,
-        box4EntryIndex: currentIndex,
         correctCount: card.correctCount + 1,
         lastReviewed: todayStr(),
       };

@@ -281,7 +281,7 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
   },
 
   resetExtraStudy: () => {
-    set({ isExtraStudyMode: false });
+    set({ isExtraStudyMode: false, todayCards: [] });
     // C4 수정: 강제 갱신하지 않아 세션 완료 후 새 단어 무한 충전을 방지
     get().loadCards();
   },
@@ -394,10 +394,7 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
     const prevQueue = [...todayCards];
 
 
-    // currentIndex(항상 0)가 아닌 남은 큐 깊이를 전달하여 box4EntryIndex에 의미있는 값이 저장되도록 함
-    // Box 3→4 전환 시: 현재 큐 크기를 기록 → Box 4 오답 시 해당 위치로 재삽입
-    const queueDepth = todayCards.length - 1;
-    const updated = leitnerReview(card, isCorrect, queueDepth);
+    const updated = leitnerReview(card, isCorrect);
 
     await _db.cards.put(updated);
 
