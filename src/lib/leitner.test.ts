@@ -125,36 +125,36 @@ describe('getTodayCards', () => {
 
   it('lastReviewed 없는 카드는 항상 포함', () => {
     const card = makeCard(1, { id: 1 });
-    expect(getTodayCards([card])).toHaveLength(1);
+    expect(getTodayCards([card], 200)).toHaveLength(1);
   });
 
   it('graduated 카드는 제외', () => {
     const card = makeCard(1, { id: 1, graduated: true });
-    expect(getTodayCards([card])).toHaveLength(0);
+    expect(getTodayCards([card], 200)).toHaveLength(0);
   });
 
   it('Box 1(간격 1일): 1일 경과 시 포함', () => {
     const card = makeCard(1, { id: 1, lastReviewed: past(1) });
-    expect(getTodayCards([card])).toHaveLength(1);
+    expect(getTodayCards([card], 200)).toHaveLength(1);
   });
 
   it('Box 1(간격 1일): 오늘 복습했으면 제외', () => {
     const card = makeCard(1, { id: 1, lastReviewed: past(0) });
-    expect(getTodayCards([card])).toHaveLength(0);
+    expect(getTodayCards([card], 200)).toHaveLength(0);
   });
 
   it('Box 2(간격 2일): 1일 경과는 제외, 2일 경과는 포함', () => {
     const notYet = makeCard(2, { id: 1, lastReviewed: past(1) });
     const ready  = makeCard(2, { id: 2, lastReviewed: past(2) });
-    expect(getTodayCards([notYet])).toHaveLength(0);
-    expect(getTodayCards([ready])).toHaveLength(1);
+    expect(getTodayCards([notYet], 200)).toHaveLength(0);
+    expect(getTodayCards([ready], 200)).toHaveLength(1);
   });
 
   it('Box 4(간격 8일): 7일 경과는 제외, 8일 경과는 포함', () => {
     const notYet = makeCard(4, { id: 1, lastReviewed: past(7) });
     const ready  = makeCard(4, { id: 2, lastReviewed: past(8) });
-    expect(getTodayCards([notYet])).toHaveLength(0);
-    expect(getTodayCards([ready])).toHaveLength(1);
+    expect(getTodayCards([notYet], 200)).toHaveLength(0);
+    expect(getTodayCards([ready], 200)).toHaveLength(1);
   });
 });
 
