@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useShallow } from 'zustand/react/shallow';
@@ -8,7 +8,7 @@ import TodayProgress from '../components/TodayProgress';
 import BoxStatus from '../components/BoxStatus';
 import BadgePopup from '../components/BadgePopup';
 import { DECKS, type DeckId } from '../data/decks';
-import type { ExtraStudyMode } from '../lib/leitner';
+
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -39,38 +39,24 @@ export default function HomePage() {
     dismissBadge: s.dismissBadge,
   })));
 
-  const [selectedCount, setSelectedCount] = useState<number>(20);
-  const [showExtraMenu, setShowExtraMenu] = useState<boolean>(false);
-
   useEffect(() => {
     initializeCards().then(() => loadCards(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // M2: cards 4회 별도 filter → 단일 useMemo로 한 번에 집계
-  const { studiedToday, graduatedCount, nonGraduatedCount, unstudiedCount } = useMemo(() => {
+  const { studiedToday } = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
-    let studied = 0, graduated = 0, nonGraduated = 0, unstudied = 0;
+    let studied = 0;
     for (const c of cards) {
       if (c.lastReviewed === today) studied++;
-      if (c.graduated) graduated++;
-      else {
-        nonGraduated++;
-        if (!c.lastReviewed) unstudied++;
-      }
     }
-    return { studiedToday: studied, graduatedCount: graduated, nonGraduatedCount: nonGraduated, unstudiedCount: unstudied };
+    return { studiedToday: studied };
   }, [cards]);
 
   const dueCount = todayCards.length;
 
-  const handleExtraStudy = (mode: ExtraStudyMode, boxNum?: 1 | 2 | 3 | 4 | 5) => {
-    startExtraStudy(mode, { count: selectedCount, boxNum });
-    navigate('/study');
-  };
-
   const handleBoxSelect = (boxNum: 1 | 2 | 3 | 4 | 5) => {
-    startExtraStudy('box', { boxNum, count: selectedCount });
+    startExtraStudy('box', { boxNum, count: undefined });
     navigate('/study');
   };
 
@@ -172,142 +158,7 @@ export default function HomePage() {
         </motion.div>
       )}
 
-      {/* ── 자율 추가 학습 메뉴 (Always Available) ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.28 }}
-        className="bg-white rounded-3xl shadow-md p-5 mt-2 flex flex-col gap-4"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">🔥</span>
-            <div>
-              <h2 className="text-base font-bold text-gray-800">공부 더 하기 (자율 학습)</h2>
-              <p className="text-xs text-gray-400">일정과 상관없이 원하는 만큼 복습/퀴즈를 진행해요</p>
-            </div>
-          </div>
-          {dueCount > 0 && (
-            <button
-              onClick={() => setShowExtraMenu(!showExtraMenu)}
-              className="text-xs font-semibold text-blue-500 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-full transition-colors"
-            >
-              {showExtraMenu ? '접기 ▲' : '열기 ▼'}
-            </button>
-          )}
-        </div>
 
-        {/* dueCount > 0 일 땐 펼침 선택 / dueCount === 0 일 땐 항상 표시 */}
-        <AnimatePresence initial={false}>
-          {(dueCount === 0 || showExtraMenu) && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="flex flex-col gap-4 overflow-hidden"
-            >
-              {/* 학습 수량 선택 칩 */}
-              <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-2xl">
-                <span className="text-xs font-semibold text-gray-500 pl-2">학습 분량:</span>
-                {[10, 20, 50, cards.length].map((num) => (
-                  <button
-                    key={num}
-                    onClick={() => setSelectedCount(num)}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-all ${
-                      selectedCount === num
-                        ? 'bg-blue-500 text-white shadow-sm'
-                        : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
-                    }`}
-                  >
-                    {num === cards.length ? '전체' : `${num}개`}
-                  </button>
-                ))}
-              </div>
-
-              {/* 자율 학습 버튼 목록 */}
-              <div className="grid grid-cols-1 gap-2.5">
-                {/* 1. 미복습 카드 미리 학습 */}
-                {nonGraduatedCount > 0 && (
-                  <motion.button
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => handleExtraStudy('review_ahead')}
-                    className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl text-left hover:border-blue-300 transition-all shadow-sm"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">⚡</span>
-                      <div>
-                        <p className="font-bold text-gray-800 text-sm">미리 추가 복습하기</p>
-                        <p className="text-xs text-gray-500">Box 1~4 카드 중 오래된 순서대로 복습</p>
-                      </div>
-                    </div>
-                    <span className="text-xs font-extrabold text-blue-600 bg-blue-100 px-3 py-1.5 rounded-full">
-                      {Math.min(selectedCount, nonGraduatedCount)}개 시작 ➔
-                    </span>
-                  </motion.button>
-                )}
-
-                {/* 2. 졸업 카드 챌린지 */}
-                {graduatedCount > 0 && (
-                  <motion.button
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => handleExtraStudy('graduated')}
-                    className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-100 rounded-2xl text-left hover:border-purple-300 transition-all shadow-sm"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🎓</span>
-                      <div>
-                        <p className="font-bold text-gray-800 text-sm">졸업 카드 기억 점검</p>
-                        <p className="text-xs text-gray-500">졸업(Box 5)한 {graduatedCount}개 단어 랜덤 퀴즈</p>
-                      </div>
-                    </div>
-                    <span className="text-xs font-extrabold text-purple-600 bg-purple-100 px-3 py-1.5 rounded-full">
-                      {Math.min(selectedCount, graduatedCount)}개 시작 ➔
-                    </span>
-                  </motion.button>
-                )}
-
-                {/* 3. 전체 랜덤 퀴즈 */}
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleExtraStudy('all_random')}
-                  className="flex items-center justify-between p-4 bg-gradient-to-r from-sky-50 to-blue-50 border border-sky-100 rounded-2xl text-left hover:border-sky-300 transition-all shadow-sm"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">🎲</span>
-                    <div>
-                      <p className="font-bold text-gray-800 text-sm">전체 무작위 퀴즈</p>
-                      <p className="text-xs text-gray-500">전체 {cards.length}개 단어 중 랜덤 테스트</p>
-                    </div>
-                  </div>
-                  <span className="text-xs font-extrabold text-sky-600 bg-sky-100 px-3 py-1.5 rounded-full">
-                    {Math.min(selectedCount, cards.length)}개 시작 ➔
-                  </span>
-                </motion.button>
-
-                {/* 4. 새 단어 추가 학습 */}
-                {unstudiedCount > 0 && (
-                  <motion.button
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => handleExtraStudy('new_words')}
-                    className="flex items-center justify-between p-4 bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-100 rounded-2xl text-left hover:border-emerald-300 transition-all shadow-sm"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🌱</span>
-                      <div>
-                        <p className="font-bold text-gray-800 text-sm">새 단어 추가 학습</p>
-                        <p className="text-xs text-gray-500">아직 시작하지 않은 {unstudiedCount}개 새 단어</p>
-                      </div>
-                    </div>
-                    <span className="text-xs font-extrabold text-emerald-600 bg-emerald-100 px-3 py-1.5 rounded-full">
-                      {Math.min(selectedCount, unstudiedCount)}개 시작 ➔
-                    </span>
-                  </motion.button>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
     </div>
     </>
   );
