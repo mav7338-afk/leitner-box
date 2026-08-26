@@ -270,7 +270,7 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
         return;
       }
 
-      const nextTodayCards = (isExtraStudyMode && !forceRefresh && currentTodayCards.length > 0)
+      const nextTodayCards = (!forceRefresh && currentTodayCards.length > 0)
         ? currentTodayCards
         : calculatedTodayCards;
 

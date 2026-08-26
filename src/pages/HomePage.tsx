@@ -43,7 +43,7 @@ export default function HomePage() {
   const [showExtraMenu, setShowExtraMenu] = useState<boolean>(false);
 
   useEffect(() => {
-    initializeCards().then(() => loadCards(true));
+    initializeCards().then(() => loadCards(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
