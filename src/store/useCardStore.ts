@@ -357,7 +357,7 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
     const prevCard = { ...card };
     const prevQueue = [...todayCards];
 
-    const wasBox4 = card.box === 4;
+
     // currentIndex(항상 0)가 아닌 남은 큐 깊이를 전달하여 box4EntryIndex에 의미있는 값이 저장되도록 함
     // Box 3→4 전환 시: 현재 큐 크기를 기록 → Box 4 오답 시 해당 위치로 재삽입
     const queueDepth = todayCards.length - 1;
