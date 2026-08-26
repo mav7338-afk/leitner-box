@@ -29,15 +29,14 @@ npm run preview    # 빌드 결과 미리보기
 
 | Box | 복습 간격 | 정답 시 | 오답 시 |
 |-----|----------|--------|--------|
-| 1   | 1일       | → Box 2 | box 유지 (세션 큐 맨 뒤로 이동) |
-| 2   | 2일       | → Box 3 | box 유지 (세션 큐 맨 뒤로 이동) |
-| 3   | 4일       | → Box 4 | box 유지 (세션 큐 맨 뒤로 이동) |
-| 4   | 8일       | → Box 5 + `graduated=true` 즉시 | box 유지 (큐를 `box4EntryIndex` 위치로 복귀) |
+| 1   | 1일       | → Box 2 | → Box 1 유지 (당일 큐에서 제거, 내일 복습) |
+| 2   | 2일       | → Box 3 | → Box 1로 강등 (당일 큐에서 제거, 내일 복습) |
+| 3   | 4일       | → Box 4 | → Box 1로 강등 (당일 큐에서 제거, 내일 복습) |
+| 4   | 8일       | → Box 5 + `graduated=true` 즉시 | → Box 1로 강등 (당일 큐에서 제거, 내일 복습) |
 | 5   | (해당 없음) | `graduated=true` | (해당 없음) |
 
-- `box4EntryIndex`: Box 3 → Box 4 전환 시 해당 시점의 세션 인덱스를 저장 (Box 4 오답 시 큐 복귀 위치로 사용)
-- `graduated: true` 카드는 복습 대상에서 제외
-- 오답 시 box 번호는 변경되지 않음 (이전 박스로 내려가지 않음)
+- `graduated: true` 카드는 일일 복습 대상(정규 큐)에서 영구 제외됨
+- **오답 시 특수 규칙:** 모든 오답 카드는 가차 없이 Box 1로 강등(초기화)되며, 오늘의 복습 큐(`todayCards`)에서 즉시 제거되어 당일 세션 내에서는 다시 등장하지 않음.
 
 ## 컴포넌트 구조
 
@@ -92,27 +91,29 @@ sessions : ++id, date, cardsStudied, correct, wrong, durationSeconds
 
 | 키 | 값 | 설명 |
 |----|-----|------|
-| `seen_badges` | `BadgeId[]` (JSON) | 이미 표시한 뱃지 ID 목록 |
+| `seen_badges_${deckId}` | `BadgeId[]` (JSON) | 특정 덱별로 이미 표시 완료한 뱃지 목록 |
 | `voice_enabled` | `'true'` / `'false'` | 영어 발음 자동재생 on/off |
+| `active_deck` | `DeckId` | 마지막으로 선택한 덱 |
+| `daily_study_limit` | `number` | 하루 정규 학습 제한 개수 |
 
 ## 뱃지 시스템
 
-5종류의 뱃지가 있으며, 세션 종료 후 `checkSessionBadges()` 호출로 조건 판정.
-달성 시 `pendingBadge` 상태에 저장 → `BadgePopup`으로 표시 → `dismissBadge()`로 해제.
+5종류의 뱃지가 있으며, 학습 세션 단위로 `checkSessionBadges()`가 호출되어 조건을 판정함.
+달성 시 `badgeQueue` 배열에 저장 → `BadgePopup` 컴포넌트를 통해 순차적으로 표시 → `dismissBadge()`로 큐에서 제거.
 
-| ID | 조건 |
+| ID | 달성 조건 |
 |----|------|
-| `first_step` | 첫 세션 완료 |
-| `hundred_box2` | Box 2 이상 카드 100개 |
-| `ten_graduated` | 졸업 카드 10개 |
-| `week_streak` | 7일 연속 학습 |
-| `all_graduated` | 전체 800개 졸업 |
+| `habit_start` | 연속 학습일(Streak) 3일 달성 |
+| `habit_master` | 연속 학습일(Streak) 14일 달성 |
+| `long_term_mem` | Box 4 이상(졸업 포함) 카드 100개 도달 |
+| `half_success` | 전체 단어의 50% 이상 졸업 달성 |
+| `all_graduated` | 전체 단어 100% 졸업 달성 |
 
 ## 아키텍처 원칙
 
 - `lib/leitner.ts` — 순수 함수만. DB·스토어 의존성 없음. Vitest로 단위 테스트.
 - `useCardStore.ts` — Dexie DB 정의와 Zustand 스토어가 한 파일에 통합.
-- `useCardStore.reviewCard()` — `leitnerReview()` 순수 함수로 새 카드 상태를 계산한 뒤, 큐 재배치(오답 시 위치 이동)는 스토어에서 처리.
+- `useCardStore.reviewCard()` — `leitnerReview()` 순수 함수로 새 카드 상태를 계산한 뒤 즉시 DB 및 메모리에 저장.
 
 ## 핵심 스토어 액션 (`useCardStore`)
 
