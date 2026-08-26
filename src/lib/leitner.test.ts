@@ -61,33 +61,32 @@ describe('reviewCard — 정답 처리', () => {
 });
 
 describe('reviewCard — 오답 처리', () => {
-  it('Box 1 오답 → box 유지, wrongCount + 1', () => {
+  it('Box 1 오답 → Box 1 유지, wrongCount + 1, lastReviewed 오늘로 갱신', () => {
     const result = reviewCard(makeCard(1), false, 0);
     expect(result.box).toBe(1);
     expect(result.wrongCount).toBe(1);
     expect(result.correctCount).toBe(0);
+    expect(result.lastReviewed).toBe(todayStr());
   });
 
-  it('Box 3 오답 → box 유지 (box 1로 내려가지 않음)', () => {
+  it('Box 3 오답 → Box 1로 강등, wrongCount + 1', () => {
     const result = reviewCard(makeCard(3), false, 2);
-    expect(result.box).toBe(3);
-  });
-
-  it('Box 4 오답 → box 유지(4), box4EntryIndex 보존 (store가 큐 복귀 처리)', () => {
-    const card = makeCard(4, { box4EntryIndex: 2 });
-    const result = reviewCard(card, false, 7);
-
-    expect(result.box).toBe(4);
-    // box4EntryIndex는 변경되지 않음 — store가 이 값을 읽어 큐 위치 복귀
-    expect(result.box4EntryIndex).toBe(2);
+    expect(result.box).toBe(1);
     expect(result.wrongCount).toBe(1);
   });
 
-  it('오답 시 lastReviewed는 변경되지 않음 (복습 간격 보존, 다음 세션에서 즉시 재출현)', () => {
+  it('Box 4 오답 → Box 1로 강등, wrongCount + 1', () => {
+    const card = makeCard(4, { box4EntryIndex: 2 });
+    const result = reviewCard(card, false, 7);
+
+    expect(result.box).toBe(1);
+    expect(result.wrongCount).toBe(1);
+  });
+
+  it('오답 시 lastReviewed가 갱신되어 오늘 학습 큐에서 제거됨', () => {
     const card = makeCard(1, { lastReviewed: '2026-01-01' });
     const result = reviewCard(card, false, 0);
-    // C1 수정: 오답 시 lastReviewed를 갱신하지 않아야 복습 간격 조건을 즉시 만족
-    expect(result.lastReviewed).toBe('2026-01-01');
+    expect(result.lastReviewed).toBe(todayStr());
   });
 });
 
