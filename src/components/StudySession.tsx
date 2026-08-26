@@ -37,14 +37,16 @@ export default function StudySession({ cards, onFinish }: Props) {
   const [reviewing, setReviewing] = useState(false);
   const [cardKey, setCardKey] = useState(0);
 
+  // H4 수정: 타이머를 ref로 관리 → handleUndo에서 직접 취소 가능
+  const resultTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
   const current = todayCards[0] as Card | undefined;
 
   // 세션 큐가 비면 결과 확정
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
     if (todayCards.length === 0 && result === null && initialTotal > 0) {
       // 마지막 단어 되돌리기 기회를 위해 1.5초 대기 후 결과 화면 전환
-      timer = setTimeout(() => {
+      resultTimerRef.current = setTimeout(() => {
         const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
         setResult({
           correct: correctRef.current,
@@ -56,13 +58,25 @@ export default function StudySession({ cards, onFinish }: Props) {
     }
     
     return () => {
-      if (timer) clearTimeout(timer);
+      if (resultTimerRef.current) {
+        clearTimeout(resultTimerRef.current);
+        resultTimerRef.current = undefined;
+      }
     };
   }, [todayCards.length, initialTotal, result]);
 
+  const lastAnswerTimeRef = useRef(0);
+  const reviewingRef = useRef(false);
+
   const handleAnswer = async (isCorrect: boolean) => {
-    if (reviewing || !current) return;
+    if (reviewingRef.current || !current) return;
+    reviewingRef.current = true;
     setReviewing(true);
+
+    const now = Date.now();
+    const elapsedSeconds = Math.floor((now - lastAnswerTimeRef.current) / 1000);
+    lastAnswerTimeRef.current = now;
+    const durationToSave = Math.min(elapsedSeconds, 60);
 
     if (isCorrect) {
       correctRef.current++;
@@ -72,14 +86,34 @@ export default function StudySession({ cards, onFinish }: Props) {
       setWrong(wrongRef.current);
     }
 
-    await reviewCard(current.id, isCorrect);
-    setCardKey(k => k + 1);
-    setReviewing(false);
+    try {
+      await reviewCard(current.id, isCorrect);
+      
+      // Incrementally save stats
+      await useCardStore.getState().accumulateSessionStats({
+        cardsStudied: 1,
+        correct: isCorrect ? 1 : 0,
+        wrong: isCorrect ? 0 : 1,
+        durationSeconds: durationToSave,
+      });
+
+      setCardKey(k => k + 1);
+    } finally {
+      reviewingRef.current = false;
+      setReviewing(false);
+    }
   };
 
   const handleUndo = async () => {
     if (reviewing || !lastAction) return;
     setReviewing(true);
+
+    // H4 수정: Undo 즉시 결과 타이머를 취소하고 result를 null로 보장
+    if (resultTimerRef.current) {
+      clearTimeout(resultTimerRef.current);
+      resultTimerRef.current = undefined;
+    }
+    setResult(null);
     
     const wasCorrect = await undoLastAction();
     if (wasCorrect !== null) {
@@ -90,6 +124,15 @@ export default function StudySession({ cards, onFinish }: Props) {
         wrongRef.current = Math.max(0, wrongRef.current - 1);
         setWrong(wrongRef.current);
       }
+
+      // Rollback stats (duration is ignored for simplicity)
+      await useCardStore.getState().accumulateSessionStats({
+        cardsStudied: -1,
+        correct: wasCorrect ? -1 : 0,
+        wrong: wasCorrect ? 0 : -1,
+        durationSeconds: 0,
+      });
+
       setCardKey(k => k + 1);
     }
     
@@ -104,9 +147,38 @@ export default function StudySession({ cards, onFinish }: Props) {
       window.speechSynthesis.cancel();
       window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
     }
-    startTimeRef.current = Date.now();
+    const now = Date.now();
+    startTimeRef.current = now;
+    lastAnswerTimeRef.current = now;
     setSpeechReady(true);
   };
+
+  const handleStartRef = useRef(handleStart);
+  handleStartRef.current = handleStart;
+  const handleUndoRef = useRef(handleUndo);
+  handleUndoRef.current = handleUndo;
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (!speechReady) {
+        if (e.code === 'Space' || e.code === 'Enter') {
+          e.preventDefault();
+          handleStartRef.current();
+        }
+        return;
+      }
+
+      if (e.code === 'KeyZ' && lastAction && !reviewing) {
+        e.preventDefault();
+        handleUndoRef.current();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [speechReady, lastAction, reviewing]);
+
 
   // ── 시작 전 화면 (iOS 오디오 잠금 해제 트리거) ──
   if (!speechReady) {

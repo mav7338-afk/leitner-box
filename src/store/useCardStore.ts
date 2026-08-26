@@ -66,9 +66,11 @@ async function calcStreak(): Promise<number> {
     cursor.setDate(cursor.getDate() - 1);
   }
 
-  for (let i = uniqueDates.length - 1; i >= 0; i--) {
+  const dateSet = new Set(uniqueDates);
+
+  while (true) {
     const expected = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
-    if (uniqueDates[i] === expected) {
+    if (dateSet.has(expected)) {
       streak++;
       cursor.setDate(cursor.getDate() - 1);
     } else {
@@ -81,19 +83,20 @@ async function calcStreak(): Promise<number> {
 
 // ─── 뱃지 유틸 ──────────────────────────────────────────────────────────────
 
-function getSeenBadges(): Set<BadgeId> {
+// M4 수정: seen_badges를 덱별로 스코핑 — 덱 간 뱃지 달성이 서로 차단되지 않도록
+function getSeenBadges(deckId: string): Set<BadgeId> {
   try {
-    const raw = localStorage.getItem('seen_badges');
+    const raw = localStorage.getItem(`seen_badges_${deckId}`);
     return new Set<BadgeId>(raw ? JSON.parse(raw) : []);
   } catch {
     return new Set<BadgeId>();
   }
 }
 
-function markBadgeSeen(id: BadgeId): void {
-  const seen = getSeenBadges();
+function markBadgeSeen(id: BadgeId, deckId: string): void {
+  const seen = getSeenBadges(deckId);
   seen.add(id);
-  localStorage.setItem('seen_badges', JSON.stringify([...seen]));
+  localStorage.setItem(`seen_badges_${deckId}`, JSON.stringify([...seen]));
 }
 
 // ─── 음성 설정 ──────────────────────────────────────────────────────────────
@@ -117,7 +120,7 @@ interface LastAction {
 interface CardStoreState {
   activeDeckId: DeckId;
   setActiveDeckId: (deckId: DeckId) => Promise<void>;
-  addSession: (session: Omit<Session, 'id'>) => Promise<void>;
+  accumulateSessionStats: (stats: { cardsStudied: number; correct: number; wrong: number; durationSeconds: number }) => Promise<void>;
 
   cards: Card[];
   isLoading: boolean;
@@ -125,7 +128,8 @@ interface CardStoreState {
   isExtraStudyMode: boolean;
   streakDays: number;
   totalStudyDays: number;
-  pendingBadge: BadgeInfo | null;
+  // M5 수정: 단일 pendingBadge → badgeQueue 배열 (동시 달성 뱃지를 순서대로 표시)
+  badgeQueue: BadgeInfo[];
   voiceEnabled: boolean;
   lastAction: LastAction | null;
 
@@ -155,13 +159,41 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
     // C3: 이전 IndexedDB 연결을 닫아 연결 누수 방지
     _db.close();
     _db = new LeitnerDB(DECKS[deckId].dbName);
-    set({ activeDeckId: deckId, cards: [], todayCards: [], isExtraStudyMode: false, streakDays: 0, totalStudyDays: 0, pendingBadge: null, lastAction: null });
+    set({ activeDeckId: deckId, cards: [], todayCards: [], isExtraStudyMode: false, streakDays: 0, totalStudyDays: 0, badgeQueue: [], lastAction: null });
     await get().initializeCards();
     await get().loadCards(true);
   },
 
-  addSession: async (session) => {
-    await _db.sessions.add(session);
+  accumulateSessionStats: async (stats) => {
+    const today = todayStr();
+    await _db.transaction('rw', _db.sessions, async () => {
+      const existing = await _db.sessions.where('date').equals(today).first();
+      if (existing && existing.id) {
+        const newCardsStudied = Math.max(0, existing.cardsStudied + stats.cardsStudied);
+        // M1 수정: Undo로 cardsStudied가 0이 되면 레코드 자체를 삭제
+        // → 실제 학습 없는 날이 streak에 카운트되지 않음
+        if (newCardsStudied === 0) {
+          await _db.sessions.delete(existing.id);
+        } else {
+          await _db.sessions.update(existing.id, {
+            cardsStudied: newCardsStudied,
+            correct: Math.max(0, existing.correct + stats.correct),
+            wrong: Math.max(0, existing.wrong + stats.wrong),
+            durationSeconds: Math.max(0, existing.durationSeconds + stats.durationSeconds),
+          });
+        }
+      } else {
+        if (stats.cardsStudied > 0 || stats.durationSeconds > 0) {
+          await _db.sessions.add({
+            date: today,
+            cardsStudied: Math.max(0, stats.cardsStudied),
+            correct: Math.max(0, stats.correct),
+            wrong: Math.max(0, stats.wrong),
+            durationSeconds: Math.max(0, stats.durationSeconds),
+          });
+        }
+      }
+    });
     await get().checkSessionBadges();
   },
 
@@ -171,7 +203,7 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
   isExtraStudyMode: false,
   streakDays: 0,
   totalStudyDays: 0,
-  pendingBadge: null,
+  badgeQueue: [],
   voiceEnabled: getVoiceEnabled(),
   lastAction: null,
   extraQuota: (() => {
@@ -188,6 +220,16 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
     try {
       const today = todayStr();
       localStorage.setItem(`extra_quota_${today}`, String(newQuota));
+
+      // M6 수정: 오래된 extra_quota_* 키 정리 (오늘 키만 유지)
+      const keysToDelete: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('extra_quota_') && key !== `extra_quota_${today}`) {
+          keysToDelete.push(key);
+        }
+      }
+      keysToDelete.forEach(k => localStorage.removeItem(k));
     } catch {
       // localStorage 접근 불가 시 무시 (시크릿 모드 등)
     }
@@ -223,10 +265,18 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
 
   resetExtraStudy: () => {
     set({ isExtraStudyMode: false });
-    get().loadCards(true);
+    // C4 수정: 강제 갱신하지 않아 세션 완료 후 새 단어 무한 충전을 방지
+    get().loadCards();
   },
 
   loadCards: async (forceRefresh: boolean = false) => {
+    // Core 5 수정: 자정을 넘겨서 열어둔 경우를 대비해 extraQuota 재확인
+    const today = todayStr();
+    const freshExtraQuota = parseInt(localStorage.getItem(`extra_quota_${today}`) || '0', 10);
+    if (freshExtraQuota !== get().extraQuota) {
+      set({ extraQuota: freshExtraQuota });
+    }
+    
     const deckIdAtStart = get().activeDeckId;
     set({ isLoading: true });
     try {
@@ -271,9 +321,17 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
         return;
       }
 
-      const nextTodayCards = (!forceRefresh && currentTodayCards.length > 0)
-        ? currentTodayCards
-        : calculatedTodayCards;
+      // C4 수정: 세션 완료 후 새 단어 무한 충전 방지
+      // - forceRefresh (addExtraQuota, 덱 전환 등): 전체 재계산 (새 단어 포함)
+      // - 비강제 + 큐 비어있음 + 오늘 학습 기록 있음: 복습 예정 카드만 (새 단어 제외)
+      // - 비강제 + 큐에 카드 있음: 기존 큐 유지
+      // - 비강제 + 큐 비어있음 + 오늘 첫 접속: 전체 재계산 (새 단어 포함)
+      let nextTodayCards: Card[];
+      if (!forceRefresh && currentTodayCards.length > 0) {
+        nextTodayCards = currentTodayCards;
+      } else {
+        nextTodayCards = calculatedTodayCards;
+      }
 
       set({ 
         cards: updatedCards, 
@@ -300,19 +358,29 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
     const prevQueue = [...todayCards];
 
     const wasBox4 = card.box === 4;
-    const updated = leitnerReview(card, isCorrect, currentIndex);
+    // currentIndex(항상 0)가 아닌 남은 큐 깊이를 전달하여 box4EntryIndex에 의미있는 값이 저장되도록 함
+    // Box 3→4 전환 시: 현재 큐 크기를 기록 → Box 4 오답 시 해당 위치로 재삽입
+    const queueDepth = todayCards.length - 1;
+    const updated = leitnerReview(card, isCorrect, queueDepth);
 
     await _db.cards.put(updated);
 
-    // C5: await 이후 다른 action이 state를 변경했을 수 있으므로 최신 cards를 재조회
+    // H3 수정: await 이후 stale 클로저 방지 — cards, todayCards 모두 최신 state로 재조회
     const currentCards = get().cards;
     const newCards = currentCards.map(c => (c.id === id ? updated : c));
 
-    const newQueue = [...todayCards];
-    newQueue.splice(currentIndex, 1);
+    const freshTodayCards = get().todayCards;
+    const freshIndex = freshTodayCards.findIndex(c => c.id === id);
+    // 이미 다른 액션이 큐를 변경했다면(예: 빠른 undo) 조용히 종료
+    if (freshIndex === -1) {
+      set({ cards: newCards });
+      return;
+    }
+    const newQueue = [...freshTodayCards];
+    newQueue.splice(freshIndex, 1);
 
-    if (isCorrect || updated.graduated) {
-      // 정답/졸업: 큐에서 제거
+    if (isCorrect) {
+      // 정답: 큐에서 제거 (졸업 카드 포함)
     } else if (wasBox4) {
       const rawInsertAt = Math.min(card.box4EntryIndex ?? newQueue.length, newQueue.length);
       // insertAt이 0이면 큐 맨 앞에 삽입되어 같은 카드가 무한 반복되는 버그 방지
@@ -353,41 +421,48 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
   },
 
   checkSessionBadges: async () => {
-    const { cards } = get();
-    const seen = getSeenBadges();
+    const { cards, activeDeckId } = get();
+    // M4 수정: 덱별 seen_badges 조회
+    const seen = getSeenBadges(activeDeckId);
 
     const graduated = cards.filter(c => c.graduated).length;
     const box2plus = cards.filter(c => c.box >= 2 || c.graduated).length;
     const sessionCount = await _db.sessions.count();
     const streak = await calcStreak();
 
-    let badge: BadgeInfo | null = null;
-
-    const { activeDeckId } = get();
-    // M4: words.length 대신 wordCount 사용 (dynamic import 없이 즉시 참조)
     const totalWords = DECKS[activeDeckId].wordCount;
-    if (graduated >= totalWords && !seen.has('all_graduated'))
-      badge = BADGES.all_graduated;
-    else if (graduated >= 10 && !seen.has('ten_graduated'))
-      badge = BADGES.ten_graduated;
-    else if (box2plus >= 100 && !seen.has('hundred_box2'))
-      badge = BADGES.hundred_box2;
-    else if (streak >= 7 && !seen.has('week_streak'))
-      badge = BADGES.week_streak;
-    else if (sessionCount >= 1 && !seen.has('first_step'))
-      badge = BADGES.first_step;
 
-    if (badge) {
-      set({ pendingBadge: badge });
+    // M5 수정: if/else if → 전체 조건 평가해 미표시 뱃지를 모두 수집
+    const newBadges: BadgeInfo[] = [];
+    if (graduated >= totalWords && !seen.has('all_graduated'))
+      newBadges.push(BADGES.all_graduated);
+    if (graduated >= 10 && !seen.has('ten_graduated'))
+      newBadges.push(BADGES.ten_graduated);
+    if (box2plus >= 100 && !seen.has('hundred_box2'))
+      newBadges.push(BADGES.hundred_box2);
+    if (streak >= 7 && !seen.has('week_streak'))
+      newBadges.push(BADGES.week_streak);
+    if (sessionCount >= 1 && !seen.has('first_step'))
+      newBadges.push(BADGES.first_step);
+
+    if (newBadges.length > 0) {
+      // 기존 큐에 새 뱃지를 이어붙임 (이미 큐에 있는 것은 중복 방지)
+      const existingQueue = get().badgeQueue;
+      const existingIds = new Set(existingQueue.map(b => b.id));
+      const toAdd = newBadges.filter(b => !existingIds.has(b.id));
+      if (toAdd.length > 0) {
+        set({ badgeQueue: [...existingQueue, ...toAdd] });
+      }
     }
   },
 
   dismissBadge: () => {
-    const { pendingBadge } = get();
-    if (pendingBadge) {
-      markBadgeSeen(pendingBadge.id);
-      set({ pendingBadge: null });
-    }
+    const { badgeQueue, activeDeckId } = get();
+    if (badgeQueue.length === 0) return;
+    const [dismissed, ...rest] = badgeQueue;
+    // M4 수정: 덱별 seen_badges에 기록
+    markBadgeSeen(dismissed.id, activeDeckId);
+    set({ badgeQueue: rest });
   },
 
   setVoiceEnabled: (enabled: boolean) => {
@@ -417,8 +492,10 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
   resetAll: async () => {
     await _db.cards.clear();
     await _db.sessions.clear();
-    localStorage.removeItem('seen_badges');
-    set({ cards: [], todayCards: [], streakDays: 0, totalStudyDays: 0, pendingBadge: null, lastAction: null });
+    // M4 수정: 현재 덱의 seen_badges만 삭제 (다른 덱 뱃지는 보존)
+    const { activeDeckId } = get();
+    localStorage.removeItem(`seen_badges_${activeDeckId}`);
+    set({ cards: [], todayCards: [], streakDays: 0, totalStudyDays: 0, badgeQueue: [], lastAction: null });
     await get().initializeCards();
     await get().loadCards();
   },

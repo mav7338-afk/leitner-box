@@ -7,6 +7,7 @@ import { useCardStore } from '../store/useCardStore';
 import TodayProgress from '../components/TodayProgress';
 import BoxStatus from '../components/BoxStatus';
 import BadgePopup from '../components/BadgePopup';
+import StreakBadge from '../components/StreakBadge';
 import { DECKS, type DeckId } from '../data/decks';
 import { todayStr } from '../lib/leitner';
 
@@ -19,25 +20,23 @@ export default function HomePage() {
     setActiveDeckId, 
     todayCards, 
     cards, 
-    streakDays, 
     isLoading, 
     initializeCards, 
     loadCards, 
-    startExtraStudy,
-    pendingBadge, 
-    dismissBadge 
+    badgeQueue, 
+    dismissBadge,
+    streakDays
   } = useCardStore(useShallow(s => ({
     activeDeckId: s.activeDeckId,
     setActiveDeckId: s.setActiveDeckId,
     todayCards: s.todayCards,
     cards: s.cards,
-    streakDays: s.streakDays,
     isLoading: s.isLoading,
     initializeCards: s.initializeCards,
     loadCards: s.loadCards,
-    startExtraStudy: s.startExtraStudy,
-    pendingBadge: s.pendingBadge,
+    badgeQueue: s.badgeQueue,
     dismissBadge: s.dismissBadge,
+    streakDays: s.streakDays,
   })));
 
   useEffect(() => {
@@ -59,8 +58,10 @@ export default function HomePage() {
   return (
     <>
     {/* C6: AnimatePresence로 감싸야 exit 애니메이션이 동작함 */}
-    <AnimatePresence>
-      {pendingBadge && <BadgePopup badge={pendingBadge} onDismiss={dismissBadge} />}
+    <AnimatePresence mode="wait">
+      {badgeQueue.length > 0 && (
+        <BadgePopup key={badgeQueue[0].id} badge={badgeQueue[0]} onDismiss={dismissBadge} />
+      )}
     </AnimatePresence>
     <div className="flex flex-col gap-4 p-4 pb-12 max-w-lg mx-auto">
       {/* ── 앱 제목 ── */}
@@ -94,7 +95,9 @@ export default function HomePage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.14 }}
+        className="flex flex-col gap-4"
       >
+        {streakDays > 0 && <StreakBadge streakDays={streakDays} />}
         <TodayProgress dueCount={dueCount} studiedToday={studiedToday} />
       </motion.div>
 
@@ -128,7 +131,7 @@ export default function HomePage() {
       )}
 
       {/* ── 정규 복습 완료 배너 (dueCount === 0 인 경우) ── */}
-      {dueCount === 0 && (
+      {!isLoading && dueCount === 0 && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}

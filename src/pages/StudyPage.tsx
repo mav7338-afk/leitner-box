@@ -1,36 +1,34 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StudySession from '../components/StudySession';
 import { useCardStore } from '../store/useCardStore';
-import type { SessionResult } from '../types/card';
-import { todayStr } from '../lib/leitner';
 
 export default function StudyPage() {
   const navigate = useNavigate();
-  const { todayCards, isLoading, initializeCards, loadCards, addSession } = useCardStore();
+  const { todayCards, isLoading, initializeCards, loadCards } = useCardStore();
+
+  // H1 수정: 초기화 완료 전에 "오늘 공부 끝!" 화면이 잠깐 표시되는 flash 방지
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     initializeCards().then(() => {
-      if (useCardStore.getState().cards.length === 0) {
-        loadCards();
-      }
+      // cards 유무와 관계없이 항상 loadCards 호출하여 todayCards를 채움
+      return loadCards(false);
+    }).then(() => {
+      setInitialized(true);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleFinish = async (result: SessionResult) => {
-    await addSession({
-      date: todayStr(),
-      cardsStudied: result.cardsStudied,
-      correct: result.correct,
-      wrong: result.wrong,
-      durationSeconds: result.durationSeconds,
-    });
+  const handleFinish = async () => {
+    // Session stats are now accumulated card-by-card in StudySession.tsx
+    // so we no longer need to save the result here.
     useCardStore.getState().resetExtraStudy();
     navigate('/');
   };
 
-  if (isLoading) {
+  // 초기화 완료 전 또는 로딩 중에는 스피너 표시 (flash 방지)
+  if (!initialized || isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
         <div className="w-12 h-12 border-4 border-sky-400 border-t-transparent rounded-full animate-spin" />

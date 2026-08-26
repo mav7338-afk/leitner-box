@@ -17,7 +17,14 @@ export default function TodayProgress({ dueCount, studiedToday }: Props) {
 
       <div className="flex items-center gap-5">
         {/* ── SVG 원형 진행 바 ── */}
-        <div className="relative flex-shrink-0">
+        <div 
+          className="relative flex-shrink-0"
+          role="progressbar"
+          aria-valuenow={Math.round(pct * 100)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="오늘 학습 진행도"
+        >
           <svg
             viewBox="0 0 36 36"
             className="w-20 h-20 -rotate-90"

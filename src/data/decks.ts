@@ -26,7 +26,7 @@ export const DECKS: Record<string, DeckConfig> = {
     id: 'ngsl',
     title: 'NGSL 필수 영단어',
     dbName: 'leitner-db-ngsl',
-    wordCount: 2810,
+    wordCount: 2807,
     loadWords: () => import('./ngsl').then(m => m.NGSL_WORDS),
   },
 };

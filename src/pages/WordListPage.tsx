@@ -30,11 +30,27 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
+const getBoxColor = (card: Card) => {
+  if (card.graduated || card.box === 5) return 'bg-purple-100 text-purple-600';
+  if (card.box === 4) return 'bg-green-100 text-green-600';
+  if (card.box === 3) return 'bg-yellow-100 text-yellow-600';
+  if (card.box === 2) return 'bg-orange-100 text-orange-600';
+  return 'bg-red-100 text-red-600';
+};
+
 export default function WordListPage() {
-  const { cards } = useCardStore();
+  const { cards, initializeCards, loadCards } = useCardStore();
   const [query, setQuery] = useState('');
   const [boxFilter, setBoxFilter] = useState<BoxFilter>('all');
   const debouncedQuery = useDebounce(query, 300);
+
+  // H2 수정: 직접 URL 접근/새로고침 시 cards가 비어있으면 초기화
+  useEffect(() => {
+    if (cards.length === 0) {
+      initializeCards().then(() => loadCards(false));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = useMemo(() => {
     const q = debouncedQuery.trim().toLowerCase();
@@ -60,7 +76,7 @@ export default function WordListPage() {
   });
 
   return (
-    <div className="p-5 pt-8 flex flex-col gap-4 h-screen">
+    <div className="p-5 pt-8 flex flex-col gap-4 h-[calc(100vh-5rem)]">
       <div>
         <h1 className="text-2xl font-bold text-gray-700 mb-1">단어장 📚</h1>
         <p className="text-gray-400 text-sm">전체 {total}개 · 졸업 {graduated}개</p>
@@ -80,6 +96,7 @@ export default function WordListPage() {
           <button
             onClick={() => setQuery('')}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 text-xl leading-none"
+            aria-label="검색어 지우기"
           >
             ×
           </button>
@@ -120,6 +137,7 @@ export default function WordListPage() {
           <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
             {virtualizer.getVirtualItems().map(virtualRow => {
               const card = filtered[virtualRow.index];
+              if (!card) return null;
               return (
                 <div
                   key={card.id}
@@ -133,22 +151,13 @@ export default function WordListPage() {
                     paddingBottom: '8px',
                   }}
                 >
-                  <div className="bg-white rounded-2xl px-4 py-3 shadow-sm flex items-center justify-between h-full">
-                    <div className="flex-1 min-w-0 mr-3">
+                  <div className="bg-white rounded-2xl px-4 py-3 shadow-sm flex items-center justify-between h-full overflow-hidden">
+                    <div className="flex-1 min-w-0 mr-3 truncate">
                       <span className="font-semibold text-gray-800">{card.word}</span>
-                      <span className="text-gray-400 text-sm ml-2">{card.meaning}</span>
+                      <span className="text-gray-400 text-sm ml-2 truncate">{card.meaning}</span>
                     </div>
                     <span
-                      className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full
-                        ${card.graduated
-                          ? 'bg-purple-100 text-purple-600'
-                          : card.box === 1
-                            ? 'bg-gray-100 text-gray-500'
-                            : card.box === 2
-                              ? 'bg-sky-100 text-sky-600'
-                              : card.box === 3
-                                ? 'bg-green-100 text-green-600'
-                                : 'bg-orange-100 text-orange-600'}`}
+                      className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${getBoxColor(card)}`}
                     >
                       {card.graduated ? '졸업' : `Box ${card.box}`}
                     </span>

@@ -1,8 +1,17 @@
+import { useEffect } from 'react';
 import { useCardStore } from '../store/useCardStore';
 import { DECKS } from '../data/decks';
 
 export default function SettingsPage() {
-  const { resetAll, cards, totalStudyDays, voiceEnabled, setVoiceEnabled, activeDeckId } = useCardStore();
+  const { resetAll, cards, totalStudyDays, voiceEnabled, setVoiceEnabled, activeDeckId, initializeCards, loadCards } = useCardStore();
+
+  // H2 수정: 직접 URL 접근/새로고침 시 cards가 비어있으면 초기화
+  useEffect(() => {
+    if (cards.length === 0) {
+      initializeCards().then(() => loadCards(false));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const graduated = cards.filter(c => c.graduated).length;
   const total = cards.length;
@@ -49,8 +58,10 @@ export default function SettingsPage() {
             <p className="text-xs text-gray-400 mt-0.5">카드 앞면에 발음 버튼 표시</p>
           </div>
           <button
+            role="switch"
+            aria-checked={voiceEnabled}
             onClick={() => setVoiceEnabled(!voiceEnabled)}
-            className={`relative inline-flex h-7 w-12 rounded-full transition-colors duration-200 focus:outline-none
+            className={`relative inline-flex h-7 w-12 rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 ring-sky-300 ring-offset-2
               ${voiceEnabled ? 'bg-sky-500' : 'bg-gray-200'}`}
             aria-label="발음 토글"
           >

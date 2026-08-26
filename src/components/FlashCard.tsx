@@ -22,14 +22,16 @@ export default function FlashCard({ card, onCorrect, onWrong }: Props) {
       window.speechSynthesis.cancel();
       
       // iOS Safari 버그 우회: cancel() 직후 바로 speak()하면 중복 발음되거나 씹히는 현상 방지
-      const timer = setTimeout(() => {
+      speakTimerRef.current = setTimeout(() => {
         const utt = new SpeechSynthesisUtterance(initialCard.word);
         utt.lang = 'en-US';
         utt.rate = 0.9;
         window.speechSynthesis.speak(utt);
       }, 50);
 
-      return () => clearTimeout(timer);
+      return () => {
+        if (speakTimerRef.current) clearTimeout(speakTimerRef.current);
+      };
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -65,6 +67,38 @@ export default function FlashCard({ card, onCorrect, onWrong }: Props) {
     onWrong();
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      switch (e.code) {
+        case 'Space':
+        case 'Enter':
+          e.preventDefault();
+          if (!isFlipped) setIsFlipped(true);
+          break;
+        case 'Digit1':
+        case 'Numpad1':
+        case 'ArrowLeft':
+          if (isFlipped) {
+            e.preventDefault();
+            onWrong();
+          }
+          break;
+        case 'Digit2':
+        case 'Numpad2':
+        case 'ArrowRight':
+          if (isFlipped) {
+            e.preventDefault();
+            onCorrect();
+          }
+          break;
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFlipped, onCorrect, onWrong]);
+
   return (
     // perspective 컨테이너 — 클릭 시 앞면에서 뒤집기
     <div
@@ -81,7 +115,10 @@ export default function FlashCard({ card, onCorrect, onWrong }: Props) {
         {/* ── 앞면: 영어 단어 ── */}
         <div
           style={{ backfaceVisibility: 'hidden' }}
-          className="absolute inset-0 bg-white rounded-3xl shadow-lg flex flex-col items-center justify-center gap-5 px-6"
+          className="absolute inset-0 bg-white rounded-3xl shadow-lg flex flex-col items-center justify-center gap-5 px-6 focus:outline-none focus-visible:ring-4 ring-sky-300"
+          role="button"
+          tabIndex={isFlipped ? -1 : 0}
+          aria-hidden={isFlipped}
         >
           <p className="text-4xl font-bold text-gray-800 text-center leading-tight">
             {initialCard.word}
@@ -90,7 +127,8 @@ export default function FlashCard({ card, onCorrect, onWrong }: Props) {
           {voiceEnabled && (
             <button
               onClick={speak}
-              className="text-3xl active:scale-90 transition-transform"
+              tabIndex={isFlipped ? -1 : 0}
+              className="text-3xl active:scale-90 transition-transform focus:outline-none focus-visible:ring-2 ring-sky-300 rounded-full"
               aria-label="발음 듣기"
             >
               🔊
@@ -102,6 +140,7 @@ export default function FlashCard({ card, onCorrect, onWrong }: Props) {
         <div
           style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
           className="absolute inset-0 bg-sky-50 rounded-3xl shadow-lg flex flex-col items-center justify-center gap-5 px-5"
+          aria-hidden={!isFlipped}
         >
           <p className="text-gray-400 text-base">{initialCard.word}</p>
           <p className="text-3xl font-semibold text-sky-700 text-center leading-snug">
@@ -110,13 +149,15 @@ export default function FlashCard({ card, onCorrect, onWrong }: Props) {
           <div className="flex flex-col gap-3 w-full mt-1">
             <button
               onClick={handleCorrect}
-              className="bg-green-500 text-white py-4 text-xl w-full rounded-2xl font-bold shadow-md active:brightness-90"
+              tabIndex={isFlipped ? 0 : -1}
+              className="bg-green-500 text-white py-4 text-xl w-full rounded-2xl font-bold shadow-md active:brightness-90 focus:outline-none focus-visible:ring-4 ring-green-300"
             >
               알았어요 ✅
             </button>
             <button
               onClick={handleWrong}
-              className="bg-red-400 text-white py-4 text-xl w-full rounded-2xl font-bold shadow-md active:brightness-90"
+              tabIndex={isFlipped ? 0 : -1}
+              className="bg-red-400 text-white py-4 text-xl w-full rounded-2xl font-bold shadow-md active:brightness-90 focus:outline-none focus-visible:ring-4 ring-red-300"
             >
               몰랐어요 ❌
             </button>

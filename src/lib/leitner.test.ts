@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { reviewCard, getBoxCards, getTodayCards } from './leitner';
+import { reviewCard, getBoxCards, getTodayCards, todayStr } from './leitner';
 import type { Card } from '../types/card';
 
 function makeCard(box: 1 | 2 | 3 | 4 | 5, overrides: Partial<Card> = {}): Card {
@@ -53,10 +53,10 @@ describe('reviewCard — 정답 처리', () => {
     expect(result.correctCount).toBe(1);
   });
 
-  it('정답 시 lastReviewed를 오늘 날짜로 갱신', () => {
-    const today = new Date().toISOString().split('T')[0];
+  it('정답 시 lastReviewed를 오늘 날짜(로컬)로 갱신', () => {
+    // M7 수정: toISOString()은 UTC 기준 → KST 오전에 날짜 불일치. todayStr()(로컬)로 비교
     const result = reviewCard(makeCard(1), true, 0);
-    expect(result.lastReviewed).toBe(today);
+    expect(result.lastReviewed).toBe(todayStr());
   });
 });
 
@@ -83,12 +83,11 @@ describe('reviewCard — 오답 처리', () => {
     expect(result.wrongCount).toBe(1);
   });
 
-  it('오답 시 lastReviewed는 오늘 날짜로 갱신됨 (복습 스케줄 정확도 보장)', () => {
-    const today = new Date().toISOString().split('T')[0];
+  it('오답 시 lastReviewed는 변경되지 않음 (복습 간격 보존, 다음 세션에서 즉시 재출현)', () => {
     const card = makeCard(1, { lastReviewed: '2026-01-01' });
     const result = reviewCard(card, false, 0);
-    // C1 수정: 오답이어도 "오늘 봤다"는 사실을 기록하여 다음 세션에서 간격 계산이 정확해짐
-    expect(result.lastReviewed).toBe(today);
+    // C1 수정: 오답 시 lastReviewed를 갱신하지 않아야 복습 간격 조건을 즉시 만족
+    expect(result.lastReviewed).toBe('2026-01-01');
   });
 });
 
@@ -114,10 +113,15 @@ describe('getBoxCards', () => {
 // ─── getTodayCards ────────────────────────────────────────────────────────────
 
 describe('getTodayCards', () => {
+  // M7 수정: toISOString()은 UTC 기준 → KST 오전에 날짜가 하루 어긋남
+  // 로컬 날짜(getFullYear/getMonth/getDate)로 계산
   const past = (daysAgo: number): string => {
     const d = new Date();
     d.setDate(d.getDate() - daysAgo);
-    return d.toISOString().split('T')[0];
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   };
 
   it('lastReviewed 없는 카드는 항상 포함', () => {

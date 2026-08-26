@@ -18,7 +18,7 @@ export default function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50">
-      <div className="max-w-md mx-auto bg-white border-t border-gray-200 px-2 py-2 safe-area-inset-bottom">
+      <div className="max-w-md mx-auto bg-white border-t border-gray-200 px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
         <div className="flex justify-around">
           {TABS.map(tab => {
             const active = pathname === tab.path;
@@ -26,6 +26,7 @@ export default function BottomNav() {
               <button
                 key={tab.path}
                 onClick={() => navigate(tab.path)}
+                aria-current={active ? 'page' : undefined}
                 className={`flex flex-col items-center gap-1 px-6 py-1 rounded-xl transition-colors
                   ${active ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
               >

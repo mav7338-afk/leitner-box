@@ -16,7 +16,18 @@ export default function BadgePopup({ badge, onDismiss }: Props) {
       origin: { y: 0.5 },
       colors: ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444'],
     });
+    return () => {
+      try { confetti.reset(); } catch {}
+    };
   }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onDismiss();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onDismiss]);
 
   return (
     <div
@@ -24,6 +35,9 @@ export default function BadgePopup({ badge, onDismiss }: Props) {
       onClick={onDismiss}
     >
       <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="badge-title"
         initial={{ scale: 0.7, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.8, opacity: 0 }}
@@ -41,7 +55,7 @@ export default function BadgePopup({ badge, onDismiss }: Props) {
 
         <div className="text-center">
           <p className="text-gray-400 text-sm mb-1">뱃지 획득!</p>
-          <h2 className="text-2xl font-bold text-gray-800">{badge.title}</h2>
+          <h2 id="badge-title" className="text-2xl font-bold text-gray-800">{badge.title}</h2>
         </div>
 
         <button

@@ -33,7 +33,7 @@ export default function BoxStatus({ cards, onSelectBox }: Props) {
   const counts = useMemo(() => {
     const result = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<1|2|3|4|5, number>;
     for (const c of cards) {
-      if (c.graduated) result[5]++;
+      if (c.graduated || c.box === 5) result[5]++;
       else if (c.box >= 1 && c.box <= 4) result[c.box as 1|2|3|4]++;
     }
     return result;
@@ -61,17 +61,26 @@ export default function BoxStatus({ cards, onSelectBox }: Props) {
           return (
             <motion.div
               key={box}
+              role={isClickable ? 'button' : undefined}
+              tabIndex={isClickable ? 0 : undefined}
+              aria-label={`${meta.label}, 카드 ${count}개`}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06 }}
               whileHover={isClickable ? { scale: 1.02 } : {}}
               whileTap={isClickable ? { scale: 0.97 } : {}}
               onClick={() => isClickable && onSelectBox?.(box)}
+              onKeyDown={(e) => {
+                if (isClickable && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault();
+                  onSelectBox?.(box);
+                }
+              }}
               className={`
                 ${isGrad ? 'col-span-2' : ''}
                 ${meta.bg} border ${meta.border} rounded-2xl p-4
                 flex ${isGrad ? 'flex-row items-center justify-between px-6' : 'flex-col items-center gap-1'}
-                ${isClickable ? 'cursor-pointer hover:shadow-md transition-all' : ''}
+                ${isClickable ? 'cursor-pointer hover:shadow-md transition-all focus:outline-none focus-visible:ring-4 ring-sky-300' : ''}
               `}
             >
               {/* 아이콘 + 라벨 */}

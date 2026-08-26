@@ -23,7 +23,7 @@ function daysSince(isoDateStr: string): number {
   then.setHours(0, 0, 0, 0);
   const now = new Date();
   now.setHours(0, 0, 0, 0);
-  return Math.floor((now.getTime() - then.getTime()) / 86_400_000);
+  return Math.round((now.getTime() - then.getTime()) / 86_400_000);
 }
 
 /**
@@ -82,12 +82,16 @@ export function reviewCard(card: Card, isCorrect: boolean, currentIndex: number)
 
   // ----- 오답 -----
   // 오답 시 box 번호 유지, wrongCount + 1
-  // lastReviewed는 갱신: "오늘 봤다"는 사실을 기록해야 다음 세션에서 복습 간격이 정확히 계산됨
-  return { ...card, wrongCount: card.wrongCount + 1, lastReviewed: todayStr() };
+  // lastReviewed는 갱신하지 않음: 오답 카드는 세션 큐 뒤로 이동하여 재도전하고,
+  // 앱 종료/새로고침 시에도 복습 간격 조건(daysSince >= interval)을 즉시 만족하여
+  // 다음 세션에서 다시 복습 대상에 포함됨
+  return { ...card, wrongCount: card.wrongCount + 1 };
 }
 
-/** 특정 박스에 속한 미졸업 카드 목록 반환 */
+/** 특정 박스에 속한 카드 목록 반환 (Box 5 = 졸업 카드) */
 export function getBoxCards(allCards: Card[], box: 1 | 2 | 3 | 4 | 5): Card[] {
+  // M3 수정: Box 5 카드는 모두 graduated=true이므로 !c.graduated 조건 대신 별도 처리
+  if (box === 5) return allCards.filter(c => c.graduated);
   return allCards.filter(c => c.box === box && !c.graduated);
 }
 
@@ -124,14 +128,14 @@ export function getTodayCards(allCards: Card[], extraQuota: number = 0): Card[] 
 
 export type ExtraStudyMode = 'review_ahead' | 'box' | 'graduated' | 'all_random' | 'new_words';
 
-/** 복습 일정과 상관없이 미졸업 (Box 1~4) 카드 미리 복습 (Box 낮은 순 → lastReviewed 예전 순) */
+/** 복습 일정과 상관없이 이미 학습한 미졸업(Box 1~4) 카드 미리 복습 (Box 낮은 순 → lastReviewed 예전 순) */
 export function getReviewAheadCards(allCards: Card[], count: number = 20): Card[] {
-  const nonGraduated = allCards.filter(c => !c.graduated);
+  // M2 수정: lastReviewed가 없는 새 단어는 ''로 정렬돼 맨 앞에 오는 버그 방지
+  // 한 번이라도 학습한 카드(lastReviewed 있음)만 대상으로 삼음
+  const nonGraduated = allCards.filter(c => !c.graduated && c.lastReviewed);
   const sorted = [...nonGraduated].sort((a, b) => {
     if (a.box !== b.box) return a.box - b.box;
-    const dateA = a.lastReviewed || '';
-    const dateB = b.lastReviewed || '';
-    return dateA.localeCompare(dateB);
+    return (a.lastReviewed ?? '').localeCompare(b.lastReviewed ?? '');
   });
   return sorted.slice(0, count);
 }
