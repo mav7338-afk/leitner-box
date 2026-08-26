@@ -143,9 +143,6 @@ export default function HomePage() {
           <span className="text-4xl">🎉</span>
           <div>
             <h3 className="text-xl font-bold">오늘 정규 복습 완료!</h3>
-            <p className="text-emerald-100 text-xs mt-0.5">
-              오늘 목표를 모두 달성했습니다. 언제든지 더 공부할 수 있어요!
-            </p>
           </div>
         </motion.div>
       )}
