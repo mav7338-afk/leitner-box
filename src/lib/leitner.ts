@@ -9,12 +9,17 @@ const BOX_INTERVALS: Record<1 | 2 | 3 | 4 | 5, number> = {
   5: Infinity, // Box 5 도달 시 graduated=true이므로 실제로 필터되지 않음
 };
 
-function todayStr(): string {
-  return new Date().toISOString().split('T')[0];
+export function todayStr(): string {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function daysSince(isoDateStr: string): number {
-  const then = new Date(isoDateStr);
+  const [year, month, day] = isoDateStr.split('-').map(Number);
+  const then = new Date(year, month - 1, day);
   then.setHours(0, 0, 0, 0);
   const now = new Date();
   now.setHours(0, 0, 0, 0);

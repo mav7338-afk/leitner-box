@@ -11,6 +11,7 @@ import {
   getGraduatedPracticeCards,
   getRandomPracticeCards,
   getUnstudiedCards,
+  todayStr,
   type ExtraStudyMode
 } from '../lib/leitner';
 
@@ -60,13 +61,13 @@ async function calcStreak(): Promise<number> {
   cursor.setHours(0, 0, 0, 0);
 
   // 오늘 학습 안 했으면 어제부터 역추적 (연속 기록 끊김 오해 방지)
-  const todayStr = cursor.toISOString().split('T')[0];
-  if (!uniqueDates.includes(todayStr)) {
+  const today = todayStr();
+  if (!uniqueDates.includes(today)) {
     cursor.setDate(cursor.getDate() - 1);
   }
 
   for (let i = uniqueDates.length - 1; i >= 0; i--) {
-    const expected = cursor.toISOString().split('T')[0];
+    const expected = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
     if (uniqueDates[i] === expected) {
       streak++;
       cursor.setDate(cursor.getDate() - 1);
@@ -175,7 +176,7 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
   lastAction: null,
   extraQuota: (() => {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = todayStr();
       return parseInt(localStorage.getItem(`extra_quota_${today}`) || '0', 10);
     } catch {
       return 0;
@@ -185,7 +186,7 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
   addExtraQuota: (amount: number) => {
     const newQuota = get().extraQuota + amount;
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = todayStr();
       localStorage.setItem(`extra_quota_${today}`, String(newQuota));
     } catch {
       // localStorage 접근 불가 시 무시 (시크릿 모드 등)

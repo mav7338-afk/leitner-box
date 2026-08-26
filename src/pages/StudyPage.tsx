@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import StudySession from '../components/StudySession';
 import { useCardStore } from '../store/useCardStore';
 import type { SessionResult } from '../types/card';
+import { todayStr } from '../lib/leitner';
 
 export default function StudyPage() {
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ export default function StudyPage() {
 
   const handleFinish = async (result: SessionResult) => {
     await addSession({
-      date: new Date().toISOString().split('T')[0],
+      date: todayStr(),
       cardsStudied: result.cardsStudied,
       correct: result.correct,
       wrong: result.wrong,

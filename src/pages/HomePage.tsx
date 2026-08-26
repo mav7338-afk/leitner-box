@@ -8,6 +8,7 @@ import TodayProgress from '../components/TodayProgress';
 import BoxStatus from '../components/BoxStatus';
 import BadgePopup from '../components/BadgePopup';
 import { DECKS, type DeckId } from '../data/decks';
+import { todayStr } from '../lib/leitner';
 
 
 export default function HomePage() {
@@ -45,7 +46,7 @@ export default function HomePage() {
   }, []);
 
   const { studiedToday } = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayStr();
     let studied = 0;
     for (const c of cards) {
       if (c.lastReviewed === today) studied++;
