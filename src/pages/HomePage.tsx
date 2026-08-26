@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useShallow } from 'zustand/react/shallow';
 import { useCardStore } from '../store/useCardStore';
-import StreakBadge from '../components/StreakBadge';
+
 import TodayProgress from '../components/TodayProgress';
 import BoxStatus from '../components/BoxStatus';
 import BadgePopup from '../components/BadgePopup';
@@ -56,11 +56,6 @@ export default function HomePage() {
 
   const dueCount = todayCards.length;
 
-  const handleBoxSelect = (boxNum: 1 | 2 | 3 | 4 | 5) => {
-    startExtraStudy('box', { boxNum, count: undefined });
-    navigate('/study');
-  };
-
   return (
     <>
     {/* C6: AnimatePresence로 감싸야 exit 애니메이션이 동작함 */}
@@ -94,16 +89,7 @@ export default function HomePage() {
         </div>
       </motion.header>
 
-      {/* ── 연속 학습 뱃지 ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.08 }}
-      >
-        <StreakBadge streakDays={streakDays} />
-      </motion.div>
 
-      {/* ── 오늘 학습 현황 ── */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -123,7 +109,7 @@ export default function HomePage() {
             <div className="w-8 h-8 border-4 border-sky-300 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
-          <BoxStatus cards={cards} onSelectBox={handleBoxSelect} />
+          <BoxStatus cards={cards} />
         )}
       </motion.div>
 
