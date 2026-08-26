@@ -23,7 +23,7 @@ export default function StudyPage() {
   const handleFinish = async () => {
     // Session stats are now accumulated card-by-card in StudySession.tsx
     // so we no longer need to save the result here.
-    useCardStore.getState().resetExtraStudy();
+    useCardStore.getState().loadCards();
     navigate('/');
   };
 
@@ -45,7 +45,7 @@ export default function StudyPage() {
         <p className="text-gray-400 text-lg">내일 다시 만나요</p>
         <button
           onClick={() => {
-            useCardStore.getState().resetExtraStudy();
+            useCardStore.getState().loadCards();
             navigate('/');
           }}
           className="mt-4 bg-sky-500 text-white text-lg font-bold py-4 px-10 rounded-2xl shadow active:brightness-90"

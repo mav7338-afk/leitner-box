@@ -6,13 +6,7 @@ import { DECKS, type DeckId } from '../data/decks';
 import { 
   reviewCard as leitnerReview, 
   getTodayCards,
-  getReviewAheadCards,
-  getBoxStudyCards,
-  getGraduatedPracticeCards,
-  getRandomPracticeCards,
-  getUnstudiedCards,
   todayStr,
-  type ExtraStudyMode
 } from '../lib/leitner';
 
 // ─── IndexedDB 스키마 ────────────────────────────────────────────────────────
@@ -125,7 +119,6 @@ interface CardStoreState {
   cards: Card[];
   isLoading: boolean;
   todayCards: Card[];
-  isExtraStudyMode: boolean;
   streakDays: number;
   totalStudyDays: number;
   // M5 수정: 단일 pendingBadge → badgeQueue 배열 (동시 달성 뱃지를 순서대로 표시)
@@ -134,8 +127,6 @@ interface CardStoreState {
   lastAction: LastAction | null;
 
   loadCards: (forceRefresh?: boolean) => Promise<void>;
-  startExtraStudy: (mode: ExtraStudyMode, options?: { count?: number; boxNum?: 1 | 2 | 3 | 4 | 5 }) => void;
-  resetExtraStudy: () => void;
   reviewCard: (id: number, isCorrect: boolean) => Promise<void>;
   undoLastAction: () => Promise<boolean | null>;
   initializeCards: () => Promise<void>;
@@ -161,7 +152,7 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
     // C3: 이전 IndexedDB 연결을 닫아 연결 누수 방지
     _db.close();
     _db = new LeitnerDB(DECKS[deckId].dbName);
-    set({ activeDeckId: deckId, cards: [], todayCards: [], isExtraStudyMode: false, streakDays: 0, totalStudyDays: 0, badgeQueue: [], lastAction: null });
+    set({ activeDeckId: deckId, cards: [], todayCards: [], streakDays: 0, totalStudyDays: 0, badgeQueue: [], lastAction: null });
     await get().initializeCards();
     await get().loadCards(true);
   },
@@ -202,7 +193,6 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
   cards: [],
   isLoading: false,
   todayCards: [],
-  isExtraStudyMode: false,
   streakDays: 0,
   totalStudyDays: 0,
   badgeQueue: [],
@@ -254,37 +244,7 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
     get().loadCards(true);
   },
 
-  startExtraStudy: (mode: ExtraStudyMode, options?: { count?: number; boxNum?: 1 | 2 | 3 | 4 | 5 }) => {
-    const { cards } = get();
-    const count = options?.count ?? 20;
-    let selected: Card[] = [];
 
-    switch (mode) {
-      case 'review_ahead':
-        selected = getReviewAheadCards(cards, count);
-        break;
-      case 'box':
-        selected = getBoxStudyCards(cards, options?.boxNum || 1, count);
-        break;
-      case 'graduated':
-        selected = getGraduatedPracticeCards(cards, count);
-        break;
-      case 'all_random':
-        selected = getRandomPracticeCards(cards, count);
-        break;
-      case 'new_words':
-        selected = getUnstudiedCards(cards, count);
-        break;
-    }
-
-    set({ todayCards: selected, isExtraStudyMode: true, lastAction: null });
-  },
-
-  resetExtraStudy: () => {
-    set({ isExtraStudyMode: false, todayCards: [] });
-    // C4 수정: 강제 갱신하지 않아 세션 완료 후 새 단어 무한 충전을 방지
-    get().loadCards();
-  },
 
   loadCards: async (forceRefresh: boolean = false) => {
     // Core 5 수정: 자정을 넘겨서 열어둔 경우를 대비해 extraQuota 재확인
@@ -303,7 +263,7 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
         set({ isLoading: false });
         return;
       }
-      const { activeDeckId, isExtraStudyMode, todayCards: currentTodayCards } = get();
+      const { activeDeckId, todayCards: currentTodayCards } = get();
 
       // M4: dynamic import로 지연 로딩된 단어 목록 사용
       const deckWords = await DECKS[activeDeckId].loadWords();
@@ -372,7 +332,6 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
       set({ 
         cards: updatedCards, 
         todayCards: nextTodayCards, 
-        isExtraStudyMode: forceRefresh ? false : isExtraStudyMode,
         streakDays, 
         totalStudyDays, 
         isLoading: false 
