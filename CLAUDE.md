@@ -111,6 +111,7 @@ sessions : ++id, date, cardsStudied, correct, wrong, durationSeconds
 
 ## 아키텍처 원칙
 
+- **[중요] 오버엔지니어링 금지:** 현재 앱은 Zustand + Dexie + 순수 함수 조합으로 매우 가볍게 설계되어 있다. 이 아키텍처를 그대로 유지하고, 절대 Redux나 기타 무거운 외부 라이브러리를 도입하는 오버엔지니어링을 하지 마라.
 - `lib/leitner.ts` — 순수 함수만. DB·스토어 의존성 없음. Vitest로 단위 테스트.
 - `useCardStore.ts` — Dexie DB 정의와 Zustand 스토어가 한 파일에 통합.
 - `useCardStore.reviewCard()` — `leitnerReview()` 순수 함수로 새 카드 상태를 계산한 뒤 즉시 DB 및 메모리에 저장.
