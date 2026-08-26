@@ -98,10 +98,8 @@ export function getBoxCards(allCards: Card[], box: 1 | 2 | 3 | 4 | 5): Card[] {
   return allCards.filter(c => c.box === box && !c.graduated);
 }
 
-export const DAILY_LIMIT = 200;
-
 /** 오늘 복습 대상 카드 필터링 (박스별 간격 기준 + 일일 제한 옵션 A) */
-export function getTodayCards(allCards: Card[], extraQuota: number = 0): Card[] {
+export function getTodayCards(allCards: Card[], dailyLimit: number, extraQuota: number = 0): Card[] {
   const today = todayStr();
   const studiedToday = allCards.filter(card => card.lastReviewed === today).length;
 
@@ -115,7 +113,7 @@ export function getTodayCards(allCards: Card[], extraQuota: number = 0): Card[] 
 
   // 2. 남은 할당량 계산 (일일 제한 + 추가 할당량 - 오늘 공부한 카드 수 - 오늘 복습해야 할 카드 수)
   // 복습 카드는 할당량을 초과하더라도 밀리면 안 되므로 무조건 반환합니다
-  const remainingQuota = (DAILY_LIMIT + extraQuota) - studiedToday - reviewCards.length;
+  const remainingQuota = (dailyLimit + extraQuota) - studiedToday - reviewCards.length;
 
   if (remainingQuota <= 0) {
     return reviewCards;

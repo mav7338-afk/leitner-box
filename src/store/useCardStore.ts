@@ -146,6 +146,8 @@ interface CardStoreState {
 
   extraQuota: number;
   addExtraQuota: (amount: number) => void;
+  dailyLimit: number;
+  setDailyLimit: (limit: number) => void;
 }
 
 // ─── Zustand 스토어 ──────────────────────────────────────────────────────────
@@ -214,6 +216,21 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
       return 0;
     }
   })(),
+  dailyLimit: (() => {
+    try {
+      return parseInt(localStorage.getItem('daily_limit') || '200', 10);
+    } catch {
+      return 200;
+    }
+  })(),
+
+  setDailyLimit: (limit: number) => {
+    try {
+      localStorage.setItem('daily_limit', String(limit));
+    } catch {}
+    set({ dailyLimit: limit });
+    get().loadCards(true);
+  },
 
   addExtraQuota: (amount: number) => {
     const newQuota = get().extraQuota + amount;
@@ -328,8 +345,8 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
         updatedCards.push(...newCards);
       }
 
-      const { extraQuota } = get();
-      const calculatedTodayCards = getTodayCards(updatedCards, extraQuota);
+      const { extraQuota, dailyLimit } = get();
+      const calculatedTodayCards = getTodayCards(updatedCards, dailyLimit, extraQuota);
       const streakDays = await calcStreak();
       const allDates = await _db.sessions.orderBy('date').uniqueKeys();
       const totalStudyDays = allDates.length;

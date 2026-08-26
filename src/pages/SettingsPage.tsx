@@ -3,7 +3,7 @@ import { useCardStore } from '../store/useCardStore';
 import { DECKS } from '../data/decks';
 
 export default function SettingsPage() {
-  const { resetAll, cards, totalStudyDays, voiceEnabled, setVoiceEnabled, activeDeckId, initializeCards, loadCards } = useCardStore();
+  const { resetAll, cards, totalStudyDays, voiceEnabled, setVoiceEnabled, activeDeckId, initializeCards, loadCards, dailyLimit, setDailyLimit } = useCardStore();
 
   // H2 수정: 직접 URL 접근/새로고침 시 cards가 비어있으면 초기화
   useEffect(() => {
@@ -50,9 +50,34 @@ export default function SettingsPage() {
       </div>
 
       {/* 학습 설정 */}
-      <div className="bg-white rounded-2xl shadow-sm p-5">
-        <p className="text-sm font-semibold text-gray-500 mb-3">학습 설정</p>
-        <div className="flex items-center justify-between">
+      <div className="bg-white rounded-2xl shadow-sm p-5 flex flex-col gap-6">
+        <p className="text-sm font-semibold text-gray-500 mb-1">학습 설정</p>
+        
+        {/* 하루 학습량 설정 */}
+        <div className="flex flex-col gap-3">
+          <div>
+            <p className="text-sm font-medium text-gray-700">하루 학습량 목표 🎯</p>
+            <p className="text-xs text-gray-400 mt-0.5">매일 학습할 단어 수를 선택하세요.</p>
+          </div>
+          <div className="flex gap-2">
+            {[100, 200, 300, 400, 500].map(limit => (
+              <button
+                key={limit}
+                onClick={() => setDailyLimit(limit)}
+                className={`flex-1 py-2 text-sm font-bold rounded-xl border transition-colors ${
+                  dailyLimit === limit 
+                    ? 'bg-sky-100 border-sky-300 text-sky-700 shadow-sm' 
+                    : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                {limit}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 발음 토글 */}
+        <div className="flex items-center justify-between border-t border-gray-100 pt-4">
           <div>
             <p className="text-sm font-medium text-gray-700">발음 듣기 (🔊)</p>
             <p className="text-xs text-gray-400 mt-0.5">카드 앞면에 발음 버튼 표시</p>
