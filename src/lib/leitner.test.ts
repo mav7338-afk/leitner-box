@@ -20,27 +20,26 @@ function makeCard(box: 1 | 2 | 3 | 4 | 5, overrides: Partial<Card> = {}): Card {
 describe('reviewCard — 정답 처리', () => {
   it('Box 1 정답 → Box 2 이동', () => {
     const card = makeCard(1);
-    const result = reviewCard(card, true, 0);
+    const result = reviewCard(card, true);
     expect(result.box).toBe(2);
     expect(result.correctCount).toBe(1);
     expect(result.graduated).toBe(false);
   });
 
   it('Box 2 정답 → Box 3 이동', () => {
-    const result = reviewCard(makeCard(2), true, 1);
+    const result = reviewCard(makeCard(2), true);
     expect(result.box).toBe(3);
   });
 
-  it('Box 3 정답 → Box 4 이동, box4EntryIndex 저장', () => {
-    const result = reviewCard(makeCard(3), true, 5);
+  it('Box 3 정답 → Box 4 이동', () => {
+    const result = reviewCard(makeCard(3), true);
     expect(result.box).toBe(4);
-    expect(result.box4EntryIndex).toBe(5);
     expect(result.correctCount).toBe(1);
   });
 
   it('Box 4 정답 → Box 5 이동 + graduated = true', () => {
-    const card = makeCard(4, { box4EntryIndex: 3 });
-    const result = reviewCard(card, true, 8);
+    const card = makeCard(4);
+    const result = reviewCard(card, true);
     expect(result.box).toBe(5);
     expect(result.graduated).toBe(true);
     expect(result.correctCount).toBe(1);
@@ -48,21 +47,21 @@ describe('reviewCard — 정답 처리', () => {
 
   it('Box 5 정답 → graduated = true (이미 최고 박스)', () => {
     const card = makeCard(5);
-    const result = reviewCard(card, true, 0);
+    const result = reviewCard(card, true);
     expect(result.graduated).toBe(true);
     expect(result.correctCount).toBe(1);
   });
 
   it('정답 시 lastReviewed를 오늘 날짜(로컬)로 갱신', () => {
     // M7 수정: toISOString()은 UTC 기준 → KST 오전에 날짜 불일치. todayStr()(로컬)로 비교
-    const result = reviewCard(makeCard(1), true, 0);
+    const result = reviewCard(makeCard(1), true);
     expect(result.lastReviewed).toBe(todayStr());
   });
 });
 
 describe('reviewCard — 오답 처리', () => {
   it('Box 1 오답 → Box 1 유지, wrongCount + 1, lastReviewed 오늘로 갱신', () => {
-    const result = reviewCard(makeCard(1), false, 0);
+    const result = reviewCard(makeCard(1), false);
     expect(result.box).toBe(1);
     expect(result.wrongCount).toBe(1);
     expect(result.correctCount).toBe(0);
@@ -70,14 +69,14 @@ describe('reviewCard — 오답 처리', () => {
   });
 
   it('Box 3 오답 → Box 1로 강등, wrongCount + 1', () => {
-    const result = reviewCard(makeCard(3), false, 2);
+    const result = reviewCard(makeCard(3), false);
     expect(result.box).toBe(1);
     expect(result.wrongCount).toBe(1);
   });
 
   it('Box 4 오답 → Box 1로 강등, wrongCount + 1', () => {
-    const card = makeCard(4, { box4EntryIndex: 2 });
-    const result = reviewCard(card, false, 7);
+    const card = makeCard(4);
+    const result = reviewCard(card, false);
 
     expect(result.box).toBe(1);
     expect(result.wrongCount).toBe(1);
@@ -85,7 +84,7 @@ describe('reviewCard — 오답 처리', () => {
 
   it('오답 시 lastReviewed가 갱신되어 오늘 학습 큐에서 제거됨', () => {
     const card = makeCard(1, { lastReviewed: '2026-01-01' });
-    const result = reviewCard(card, false, 0);
+    const result = reviewCard(card, false);
     expect(result.lastReviewed).toBe(todayStr());
   });
 });
