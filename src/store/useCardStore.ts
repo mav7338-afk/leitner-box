@@ -293,6 +293,7 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
 
       // M5: 원본 객체를 직접 mutate하지 않고 immutable하게 새 객체 생성
       const wordMap = new Map(deckWords.map(w => [w.word, w.meaning]));
+      const existingWords = new Set(cards.map(c => c.word));
       const updatedCards: Card[] = [];
       const updates: Card[] = [];
       for (const c of cards) {
@@ -307,6 +308,24 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
       }
       if (updates.length > 0) {
         await _db.cards.bulkPut(updates);
+      }
+
+      // 새로 추가된 단어가 있으면 DB와 현재 상태에 추가
+      const newCards: Card[] = [];
+      for (const w of deckWords) {
+        if (!existingWords.has(w.word)) {
+          newCards.push({
+            ...w,
+            box: 1,
+            correctCount: 0,
+            wrongCount: 0,
+            graduated: false
+          });
+        }
+      }
+      if (newCards.length > 0) {
+        await _db.cards.bulkAdd(newCards);
+        updatedCards.push(...newCards);
       }
 
       const { extraQuota } = get();
