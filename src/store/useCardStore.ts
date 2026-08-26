@@ -379,18 +379,8 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
     const newQueue = [...freshTodayCards];
     newQueue.splice(freshIndex, 1);
 
-    if (isCorrect) {
-      // 정답: 큐에서 제거 (졸업 카드 포함)
-    } else if (wasBox4) {
-      const rawInsertAt = Math.min(card.box4EntryIndex ?? newQueue.length, newQueue.length);
-      // insertAt이 0이면 큐 맨 앞에 삽입되어 같은 카드가 무한 반복되는 버그 방지
-      const insertAt = Math.max(rawInsertAt, Math.min(1, newQueue.length));
-      // 새 객체 참조를 만들어 React(AnimatePresence)가 key 변경을 감지하도록 함
-      newQueue.splice(insertAt, 0, { ...updated });
-    } else {
-      // 새 객체 참조를 만들어 React(AnimatePresence)가 key 변경을 감지하도록 함
-      newQueue.push({ ...updated });
-    }
+    // 정통 라이트너 시스템: 정답이든 오답이든 학습이 끝난 카드는 오늘 큐에서 제거
+    // (오답 카드는 Box 1로 강등되어 내일 다시 출제됨)
 
     set({ 
       cards: newCards, 

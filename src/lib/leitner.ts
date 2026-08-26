@@ -81,11 +81,14 @@ export function reviewCard(card: Card, isCorrect: boolean, currentIndex: number)
   }
 
   // ----- 오답 -----
-  // 오답 시 box 번호 유지, wrongCount + 1
-  // lastReviewed는 갱신하지 않음: 오답 카드는 세션 큐 뒤로 이동하여 재도전하고,
-  // 앱 종료/새로고침 시에도 복습 간격 조건(daysSince >= interval)을 즉시 만족하여
-  // 다음 세션에서 다시 복습 대상에 포함됨
-  return { ...card, wrongCount: card.wrongCount + 1 };
+  // 오답 시 Box 1로 강등, wrongCount + 1
+  // lastReviewed 갱신하여 오늘 학습 큐에서 제거되고 내일(Box 1 간격인 1일 후) 출제됨
+  return { 
+    ...card, 
+    box: 1,
+    wrongCount: card.wrongCount + 1,
+    lastReviewed: todayStr()
+  };
 }
 
 /** 특정 박스에 속한 카드 목록 반환 (Box 5 = 졸업 카드) */
