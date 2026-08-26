@@ -84,7 +84,7 @@ async function calcStreak(): Promise<number> {
 // ─── 뱃지 유틸 ──────────────────────────────────────────────────────────────
 
 // M4 수정: seen_badges를 덱별로 스코핑 — 덱 간 뱃지 달성이 서로 차단되지 않도록
-function getSeenBadges(deckId: string): Set<BadgeId> {
+export function getSeenBadges(deckId: string): Set<BadgeId> {
   try {
     const raw = localStorage.getItem(`seen_badges_${deckId}`);
     return new Set<BadgeId>(raw ? JSON.parse(raw) : []);
@@ -426,8 +426,6 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
     const seen = getSeenBadges(activeDeckId);
 
     const graduated = cards.filter(c => c.graduated).length;
-    const box2plus = cards.filter(c => c.box >= 2 || c.graduated).length;
-    const sessionCount = await _db.sessions.count();
     const streak = await calcStreak();
 
     const totalWords = DECKS[activeDeckId].wordCount;
@@ -436,14 +434,17 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
     const newBadges: BadgeInfo[] = [];
     if (graduated >= totalWords && !seen.has('all_graduated'))
       newBadges.push(BADGES.all_graduated);
-    if (graduated >= 10 && !seen.has('ten_graduated'))
-      newBadges.push(BADGES.ten_graduated);
-    if (box2plus >= 100 && !seen.has('hundred_box2'))
-      newBadges.push(BADGES.hundred_box2);
-    if (streak >= 7 && !seen.has('week_streak'))
-      newBadges.push(BADGES.week_streak);
-    if (sessionCount >= 1 && !seen.has('first_step'))
-      newBadges.push(BADGES.first_step);
+    if (graduated >= totalWords / 2 && !seen.has('half_success'))
+      newBadges.push(BADGES.half_success);
+    
+    const box4plus = cards.filter(c => c.box >= 4 || c.graduated).length;
+    if (box4plus >= 100 && !seen.has('long_term_mem'))
+      newBadges.push(BADGES.long_term_mem);
+      
+    if (streak >= 14 && !seen.has('habit_master'))
+      newBadges.push(BADGES.habit_master);
+    if (streak >= 3 && !seen.has('habit_start'))
+      newBadges.push(BADGES.habit_start);
 
     if (newBadges.length > 0) {
       // 기존 큐에 새 뱃지를 이어붙임 (이미 큐에 있는 것은 중복 방지)

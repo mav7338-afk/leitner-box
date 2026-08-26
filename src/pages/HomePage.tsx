@@ -10,8 +10,8 @@ import BadgePopup from '../components/BadgePopup';
 import StreakBadge from '../components/StreakBadge';
 import { DECKS, type DeckId } from '../data/decks';
 import { todayStr } from '../lib/leitner';
-
-
+import { BADGES } from '../types/badge';
+import { getSeenBadges } from '../store/useCardStore';
 export default function HomePage() {
   const navigate = useNavigate();
   // M2: 필요한 상태만 선택적으로 구독 (voiceEnabled, lastAction 등 무관한 상태 변경 시 리렌더 방지)
@@ -52,6 +52,8 @@ export default function HomePage() {
     }
     return { studiedToday: studied };
   }, [cards]);
+
+  const seenBadges = useMemo(() => getSeenBadges(activeDeckId), [activeDeckId, badgeQueue]);
 
   const dueCount = todayCards.length;
 
@@ -141,10 +143,43 @@ export default function HomePage() {
           <span className="text-4xl">🎉</span>
           <div>
             <h3 className="text-xl font-bold">오늘 정규 복습 완료!</h3>
+            <p className="text-emerald-100 text-xs mt-0.5">
+              오늘 목표를 모두 달성했습니다. 언제든지 더 공부할 수 있어요!
+            </p>
           </div>
         </motion.div>
       )}
 
+      {/* ── 내 뱃지 모음 ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="bg-white rounded-3xl shadow-md p-5 flex flex-col gap-3 mt-2"
+      >
+        <h3 className="text-gray-500 font-bold text-sm ml-1">나의 뱃지</h3>
+        <div className="flex justify-between items-center px-2">
+          {Object.values(BADGES).map(badge => {
+            const isEarned = seenBadges.has(badge.id);
+            return (
+              <div key={badge.id} className="flex flex-col items-center gap-1.5" title={badge.title}>
+                <div
+                  className={`w-12 h-12 flex items-center justify-center text-2xl rounded-full transition-all duration-300 ${
+                    isEarned ? 'bg-amber-100 shadow-sm scale-110' : 'bg-gray-100 grayscale opacity-40'
+                  }`}
+                >
+                  {isEarned ? badge.emoji : '🔒'}
+                </div>
+                <span className={`text-[10px] font-semibold text-center leading-tight ${isEarned ? 'text-gray-700' : 'text-gray-400'}`}>
+                  {badge.title.split(' ').map((word, i) => (
+                    <span key={i} className="block">{word}</span>
+                  ))}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </motion.div>
 
     </div>
     </>

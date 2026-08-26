@@ -1,8 +1,8 @@
 export type BadgeId =
-  | 'first_step'
-  | 'hundred_box2'
-  | 'ten_graduated'
-  | 'week_streak'
+  | 'habit_start'
+  | 'habit_master'
+  | 'long_term_mem'
+  | 'half_success'
   | 'all_graduated';
 
 export interface BadgeInfo {
@@ -12,9 +12,9 @@ export interface BadgeInfo {
 }
 
 export const BADGES: Record<BadgeId, BadgeInfo> = {
-  first_step:    { id: 'first_step',    title: '첫 발걸음!',  emoji: '🐣' },
-  hundred_box2:  { id: 'hundred_box2',  title: '100개 돌파!', emoji: '🚀' },
-  ten_graduated: { id: 'ten_graduated', title: '10개 졸업!',  emoji: '🎓' },
-  week_streak:   { id: 'week_streak',   title: '1주일 개근!', emoji: '🔥' },
-  all_graduated: { id: 'all_graduated', title: '완전 정복!',  emoji: '🏆' },
+  habit_start:    { id: 'habit_start',    title: '작은 습관의 시작', emoji: '🌱' },
+  habit_master:   { id: 'habit_master',   title: '꾸준함의 달인',   emoji: '🔥' },
+  long_term_mem:  { id: 'long_term_mem',  title: '장기기억 진입',   emoji: '🧠' },
+  half_success:   { id: 'half_success',   title: '절반의 고지',     emoji: '⛰️' },
+  all_graduated:  { id: 'all_graduated',  title: '단어 마스터',     emoji: '🏆' },
 };
