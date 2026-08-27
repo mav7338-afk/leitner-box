@@ -159,7 +159,7 @@ export default function HomePage() {
           {Object.values(BADGES).map(badge => {
             const isEarned = seenBadges.has(badge.id);
             return (
-              <div key={badge.id} className="flex flex-col items-center gap-1.5" title={badge.title}>
+              <div key={badge.id} className="flex flex-col items-center gap-1.5" title={`${badge.title}\n- ${badge.description}`}>
                 <div
                   className={`w-12 h-12 flex items-center justify-center text-2xl rounded-full transition-all duration-300 ${
                     isEarned ? 'bg-amber-100 shadow-sm scale-110' : 'bg-gray-100 grayscale opacity-40'
