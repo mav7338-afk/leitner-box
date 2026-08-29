@@ -60,7 +60,7 @@ export default function SettingsPage() {
             <p className="text-xs text-gray-400 mt-0.5">매일 학습할 단어 수를 선택하세요.</p>
           </div>
           <div className="flex gap-2">
-            {[100, 200, 300, 400, 500].map(limit => (
+            {[200, 400, 600, 800, 1000].map(limit => (
               <button
                 key={limit}
                 onClick={() => setDailyLimit(limit)}
