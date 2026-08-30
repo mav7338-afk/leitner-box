@@ -386,9 +386,9 @@ tradition,전통
 bell,종/벨
 disorder,장애/무질서
 troop,군대/무리
-TRUE,사실인/진짜의
+true,사실인/진짜의
 chicken,닭/닭고기
-union,노합/결합/조합
+union,노조/결합/조합
 user,사용자
 variety,다양성/품종
 convention,관습/대회
@@ -446,7 +446,7 @@ actor,배우
 actual,실제의/사실상의
 lover,연인/애호가
 ad,광고
-refugeee,난민
+refugee,난민
 addition,추가/덧셈
 additional,추가의
 address,주소/연설하다/해결하다
@@ -1129,7 +1129,7 @@ ensure,보장하다
 enter,들어가다
 government,정부
 jury,배심원단
-personnel,직원, 종업원, 인사과
+personnel,직원/종업원/인사과
 entire,전체의
 bunch,다발
 pile,더미
@@ -1199,7 +1199,7 @@ express,표현하다
 expression,표현
 fortunate,운이 좋은
 already,이미
-extent,정도
+extent,[측정되는]정도/범위/크기
 awareness,인식
 extra,여분의
 weak,약한
@@ -1220,7 +1220,7 @@ regional,지역의
 psychological,심리적인
 mayor,시장
 familiar,친숙한
-tight,단단한
+tight,꽉 조이는/팽팽한
 famous,유명한
 fan,팬
 upper,위쪽의
@@ -1343,7 +1343,7 @@ generation,세대
 hint,힌트
 proof,증거
 interior,내부
-sake,위함
+sake,이익/목적
 remarkable,놀라운
 attraction,매력
 gift,선물
@@ -1527,7 +1527,7 @@ different,다른
 new,새로운
 intend,의도하다
 fancy,화려한
-FALSE,거짓의
+false,거짓의
 rough,거친
 minor,사소한
 internal,내부의
@@ -1814,7 +1814,7 @@ alongside,나란히
 plain,명백한
 aunt,이모
 nuclear,핵의
-mere,단지
+mere,단순한/겨우 ~에 불과한
 town,마을
 nurse,간호사
 object,물건
@@ -1883,7 +1883,7 @@ exception,예외
 hat,모자
 paper,종이
 classic,고전의
-biological,생물학적
+biological,생물학적인
 disaster,재난
 park,공원
 burden,짐
@@ -2046,7 +2046,7 @@ progress,진전
 project,프로젝트
 promise,약속하다
 promote,촉진하다
-pretend,인 체하다
+pretend,~인 체하다
 behave,행동하다
 help,도움
 proper,적절한
@@ -2061,7 +2061,7 @@ seem,~인 것 같다
 prove,증명하다
 question,질문
 bless,축복하다
-spell,주문을 걸다
+spell,철자를 쓰다/말하다
 can,~할 수 있다
 live,살다
 attach,붙이다
@@ -2078,7 +2078,7 @@ differ,다르다
 regret,후회하다
 quality,품질
 result,결과
-quarter 4,4분의 1
+quarter,4분의 1
 lose,잃다
 quick,빠른
 quickly,빨리
@@ -2637,7 +2637,7 @@ say,말하다
 speak,말하다
 see,보다
 smell,냄새 맡다
-march,3월
+march,행진/행진하다
 unclear,불분명한
 defeat,패배시키다
 pray,기도하다
@@ -2704,7 +2704,7 @@ for,~을 위해
 that,저것
 voice,목소리
 volume,부피
-may,5월
+may,~일지도 모른다
 than,~보다
 vote,투표하다
 wait,기다리다
@@ -2778,7 +2778,7 @@ invitation,초대
 pregnant,임신한
 youth,청춘
 worker,노동자
-pride,자랑스러움
+pride,자부심/긍지
 worry,걱정하다
 worth,가치
 hope,희망하다
