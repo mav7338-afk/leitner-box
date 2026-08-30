@@ -268,15 +268,15 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
       // M4: dynamic import로 지연 로딩된 단어 목록 사용
       const deckWords = await DECKS[activeDeckId].loadWords();
 
-      // M5: 원본 객체를 직접 mutate하지 않고 immutable하게 새 객체 생성
-      const wordMap = new Map(deckWords.map(w => [w.word, w.meaning]));
-      const existingWords = new Set(cards.map(c => c.word));
+      // M5: 덱의 단어들을 id를 기준으로 매핑하여, word나 meaning이 수정되었는지 확인
+      const deckMap = new Map(deckWords.map(w => [w.id, w]));
+      const existingIds = new Set(cards.map(c => c.id));
       const updatedCards: Card[] = [];
       const updates: Card[] = [];
       for (const c of cards) {
-        const newMeaning = wordMap.get(c.word);
-        if (newMeaning && c.meaning !== newMeaning) {
-          const updated = { ...c, meaning: newMeaning };
+        const newDef = deckMap.get(c.id);
+        if (newDef && (c.meaning !== newDef.meaning || c.word !== newDef.word)) {
+          const updated = { ...c, meaning: newDef.meaning, word: newDef.word };
           updates.push(updated);
           updatedCards.push(updated);
         } else {
@@ -287,10 +287,10 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
         await _db.cards.bulkPut(updates);
       }
 
-      // 새로 추가된 단어가 있으면 DB와 현재 상태에 추가
+      // 새롭게 추가된 단어가 있다면 DB에 새로 추가
       const newCards: Card[] = [];
       for (const w of deckWords) {
-        if (!existingWords.has(w.word)) {
+        if (!existingIds.has(w.id)) {
           newCards.push({
             ...w,
             box: 1,
