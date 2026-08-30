@@ -1131,7 +1131,7 @@ export const NGSL_WORDS: Omit<Card, 'box' | 'lastReviewed' | 'correctCount' | 'w
   { id: 1128, word: "enter", meaning: "들어가다" },
   { id: 1129, word: "government", meaning: "정부" },
   { id: 1130, word: "jury", meaning: "배심원단" },
-  { id: 1131, word: "personnel", meaning: "인사" },
+  { id: 1131, word: "personnel", meaning: "직원, 종업원, 인사과" },
   { id: 1132, word: "entire", meaning: "전체의" },
   { id: 1133, word: "bunch", meaning: "다발" },
   { id: 1134, word: "pile", meaning: "더미" },
