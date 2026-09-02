@@ -1888,7 +1888,7 @@ export const NGSL_WORDS: Omit<Card, 'box' | 'lastReviewed' | 'correctCount' | 'w
   { id: 1885, word: "biological", meaning: "생물학적인" },
   { id: 1886, word: "disaster", meaning: "재난" },
   { id: 1887, word: "park", meaning: "공원" },
-  { id: 1888, word: "burden", meaning: "짐" },
+  { id: 1888, word: "burden", meaning: "짐/부담" },
   { id: 1889, word: "participate", meaning: "참가하다" },
   { id: 1890, word: "incentive", meaning: "장려금" },
   { id: 1891, word: "particular", meaning: "특정한" },
