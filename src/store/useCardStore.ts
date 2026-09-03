@@ -336,6 +336,8 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
         totalStudyDays, 
         isLoading: false 
       });
+      // 앱 로드/덱 전환 시에도 이미 달성된 뱃지를 감지할 수 있도록 체크
+      await get().checkSessionBadges();
     } catch {
       set({ isLoading: false });
     }
