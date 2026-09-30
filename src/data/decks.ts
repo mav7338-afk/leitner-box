@@ -26,7 +26,7 @@ export const DECKS: Record<string, DeckConfig> = {
     id: 'reading',
     title: '독해 쑥쑥 단어장',
     dbName: 'leitner-db-reading',
-    wordCount: 59,
+    wordCount: 50,
     loadWords: () => import('./reading').then(m => m.READING_WORDS),
   },
   ngsl: {
