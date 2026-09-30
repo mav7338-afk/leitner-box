@@ -22,6 +22,13 @@ export const DECKS: Record<string, DeckConfig> = {
     wordCount: WORDS.length,
     loadWords: async () => WORDS,
   },
+  reading: {
+    id: 'reading',
+    title: '독해 쑥쑥 단어장',
+    dbName: 'leitner-db-reading',
+    wordCount: 59,
+    loadWords: () => import('./reading').then(m => m.READING_WORDS),
+  },
   ngsl: {
     id: 'ngsl',
     title: 'NGSL 필수 영단어',
