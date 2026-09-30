@@ -268,20 +268,28 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
       // M4: dynamic import로 지연 로딩된 단어 목록 사용
       const deckWords = await DECKS[activeDeckId].loadWords();
 
-      // M5: 덱의 단어들을 id를 기준으로 매핑하여, word나 meaning이 수정되었는지 확인
       const deckMap = new Map(deckWords.map(w => [w.id, w]));
       const existingIds = new Set(cards.map(c => c.id));
       const updatedCards: Card[] = [];
       const updates: Card[] = [];
+      const toDeleteIds: number[] = [];
+
       for (const c of cards) {
         const newDef = deckMap.get(c.id);
-        if (newDef && (c.meaning !== newDef.meaning || c.word !== newDef.word)) {
-          const updated = { ...c, meaning: newDef.meaning, word: newDef.word };
-          updates.push(updated);
-          updatedCards.push(updated);
+        if (newDef) {
+          if (c.meaning !== newDef.meaning || c.word !== newDef.word) {
+            const updated = { ...c, meaning: newDef.meaning, word: newDef.word };
+            updates.push(updated);
+            updatedCards.push(updated);
+          } else {
+            updatedCards.push(c);
+          }
         } else {
-          updatedCards.push(c);
+          toDeleteIds.push(c.id);
         }
+      }
+      if (toDeleteIds.length > 0) {
+        await _db.cards.bulkDelete(toDeleteIds);
       }
       if (updates.length > 0) {
         await _db.cards.bulkPut(updates);
