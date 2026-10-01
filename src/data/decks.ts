@@ -24,7 +24,7 @@ export const DECKS: Record<string, DeckConfig> = {
   },
   reading: {
     id: 'reading',
-    title: '독해 쑥쑥 단어장',
+    title: 'EBS랑 홈스쿨 초등 영어 초등 영독해 Level 1',
     dbName: 'leitner-db-reading',
     wordCount: 438,
     loadWords: () => import('./reading').then(m => m.READING_WORDS),
