@@ -75,12 +75,12 @@ export default function HomePage() {
         <h1 className="text-3xl font-extrabold text-gray-800 tracking-tight">암기박스 🗂️</h1>
         
         {/* ── 덱 선택 탭 ── */}
-        <div className="bg-gray-100 p-1.5 rounded-2xl flex gap-1 items-center shadow-inner mt-4 max-w-full overflow-x-auto scrollbar-none">
+        <div className="bg-gray-100 p-1.5 rounded-2xl flex flex-col gap-1 shadow-inner mt-4 w-full">
           {(Object.values(DECKS)).map((deck) => (
             <button
               key={deck.id}
               onClick={() => setActiveDeckId(deck.id as DeckId)}
-              className={`whitespace-nowrap px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+              className={`w-full text-left px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
                 activeDeckId === deck.id
                   ? 'bg-white text-blue-600 shadow-sm'
                   : 'text-gray-500 hover:text-gray-700'
