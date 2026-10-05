@@ -26,7 +26,7 @@ export const DECKS: Record<string, DeckConfig> = {
     id: 'reading',
     title: 'EBS랑 홈스쿨 초등 영어 초등 영독해 Level 1',
     dbName: 'leitner-db-reading',
-    wordCount: 438,
+    wordCount: 736,
     loadWords: () => import('./reading').then(m => m.READING_WORDS),
   },
   ngsl: {
