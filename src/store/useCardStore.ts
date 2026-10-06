@@ -208,9 +208,9 @@ export const useCardStore = create<CardStoreState>()((set, get) => ({
   })(),
   dailyLimit: (() => {
     try {
-      return parseInt(localStorage.getItem('daily_limit') || '100', 10);
+      return parseInt(localStorage.getItem('daily_limit') || '200', 10);
     } catch {
-      return 100;
+      return 200;
     }
   })(),
 
